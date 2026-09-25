@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: incident-platform
+server:
+  port: 8080
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
