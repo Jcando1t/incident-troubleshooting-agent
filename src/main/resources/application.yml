@@ -8,3 +8,9 @@ management:
     web:
       exposure:
         include: health,info,metrics
+app:
+  llm:
+    provider: deepseek
+    api-key: ${DEEP_SEEK_API_KEY:}
+    base-url: https://api.deepseek.com
+    model: deepseek-chat

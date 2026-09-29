@@ -16,6 +16,7 @@
     <description>Multi-agent engineering incident troubleshooting platform</description>
     <properties>
         <java.version>25</java.version>
+        <langchain4j.version>1.20.1</langchain4j.version>
     </properties>
     <dependencies>
         <dependency>
@@ -34,6 +35,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-open-ai</artifactId>
+            <version>${langchain4j.version}</version>
         </dependency>
     </dependencies>
     <build>
