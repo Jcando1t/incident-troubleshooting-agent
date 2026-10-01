@@ -38,7 +38,11 @@ public class IncidentOrchestrator {
         var triage = triageAgent.execute(incident, null);
         var evidence = contextAgent.execute(incident, null);
         var rca = rcaAgent.execute(incident, evidence);
-        var remediation = remediationAgent.execute(incident, rca);
+        var incidentWithAnalysisContext = new Incident(
+                incident.id(), incident.title(), incident.service(), incident.environment(),
+                incident.severity(), incident.description(), incident.status(), incident.createdAt(),
+                triage, evidence, rca, incident.remediation(), incident.audit());
+        var remediation = remediationAgent.execute(incidentWithAnalysisContext, rca);
         return repository.save(incident.withAnalysis(triage, evidence, rca, remediation)
                 .addAudit("orchestrator", "analysis.completed", "awaiting approval"));
     }

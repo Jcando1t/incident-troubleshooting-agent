@@ -26,7 +26,7 @@ public record Incident(
 
     public Incident withAnalysis(TriageResult newTriage, EvidenceBundle newEvidence,
                                  RcaResult newRca, RemediationPlan newRemediation) {
-        return new Incident(id, title, service, environment, severity, description,
+        return new Incident(id, title, service, environment, newTriage.severity(), description,
                 IncidentStatus.AWAITING_APPROVAL, createdAt, newTriage, newEvidence,
                 newRca, newRemediation, audit);
     }
