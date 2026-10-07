@@ -6,6 +6,9 @@ spring:
     username: ${INCIDENT_DB_USERNAME:incident_app}
     password: ${INCIDENT_DB_PASSWORD:REDACTED_DATABASE_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
+  flyway:
+    baseline-on-migrate: true
+    baseline-version: 0
 server:
   port: 8080
 management:
