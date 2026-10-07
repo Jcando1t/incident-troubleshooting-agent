@@ -271,7 +271,7 @@ class IncidentOrchestratorTest {
         );
 
         assertThrows(
-                IllegalStateException.class,
+                IncidentStateConflictException.class,
                 () -> orchestrator.approve(
                         escalated.id(),
                         true,
