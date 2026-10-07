@@ -25,6 +25,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -238,5 +239,44 @@ class IncidentOrchestratorTest {
                 .save(savedIncident.capture());
         assertEquals(IncidentStatus.ESCALATED, savedIncident.getValue().status());
         verify(remediationAgent).execute(any(Incident.class), eq(rca));
+    }
+
+    @Test
+    void refusesApprovalForEscalatedIncident() {
+        var repository = mock(IncidentRepository.class);
+        var escalated = new Incident(
+                UUID.randomUUID(),
+                "Unsafe remediation plan",
+                "payment-service",
+                "production",
+                Severity.P1,
+                "Unsafe command returned",
+                IncidentStatus.ESCALATED,
+                Instant.now(),
+                null,
+                null,
+                null,
+                null,
+                List.of()
+        );
+        when(repository.findById(escalated.id()))
+                .thenReturn(Optional.of(escalated));
+
+        var orchestrator = new IncidentOrchestrator(
+                repository,
+                mock(TriageAgent.class),
+                mock(ContextAgent.class),
+                mock(RcaAgent.class),
+                mock(RemediationAgent.class)
+        );
+
+        assertThrows(
+                IllegalStateException.class,
+                () -> orchestrator.approve(
+                        escalated.id(),
+                        true,
+                        "approve unsafe plan"
+                )
+        );
     }
 }

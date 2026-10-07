@@ -131,6 +131,12 @@ public class IncidentOrchestrator {
 
     public Incident approve(UUID id, boolean approved, String comment) {
         var incident = get(id);
+        if (incident.status() != IncidentStatus.AWAITING_APPROVAL) {
+            throw new IllegalStateException(
+                    "Only incidents awaiting approval can be approved"
+            );
+        }
+
         var status = approved
                 ? IncidentStatus.APPROVED
                 : IncidentStatus.REJECTED;
