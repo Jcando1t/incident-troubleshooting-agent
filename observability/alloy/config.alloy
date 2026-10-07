@@ -1,0 +1,14 @@
+local.file_match "incident_platform" {
+  path_targets = [{"__path__" = "/var/log/incident-platform.log", "job" = "incident-platform", "service_name" = "incident-platform"}]
+}
+
+loki.source.file "incident_platform" {
+  targets    = local.file_match.incident_platform.targets
+  forward_to = [loki.write.local_loki.receiver]
+}
+
+loki.write "local_loki" {
+  endpoint {
+    url = "http://host.docker.internal:3100/loki/api/v1/push"
+  }
+}
