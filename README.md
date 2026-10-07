@@ -1,59 +1,150 @@
 # 研发故障排查多 Agent 平台
 
-这是一个 Java/Spring Boot 技术栈的故障排查平台初始骨架，目标是把告警、观测证据、专家 Agent、RCA、修复审批和复盘串成一条可审计流程。
+这是一个使用 Java 和 Spring Boot 构建的故障排查平台，连接事件接收、指标和日志采集、上下文分析、根因分析、修复方案生成、人工审批和审计记录。
 
-## 当前版本
-
-当前实现使用内存存储和确定性 Agent，先跑通核心领域流程：
+## 当前流程
 
 ```text
-告警接入 -> TriageAgent -> ContextAgent -> RcaAgent -> RemediationAgent -> 人工审批
+POST /api/incidents
+  -> TriageAgent：判断严重程度和影响范围
+  -> ContextAgent：收集 Prometheus 指标和 Loki 日志
+  -> RcaAgent：分析可能的根因
+  -> RemediationAgent：生成并校验修复计划
+  -> 人工审批：APPROVED 或 REJECTED
 ```
 
-Agent 通过接口隔离，后续可接入 OpenAI-compatible、Azure、Ollama 或企业内部模型；观测数据通过 `EvidenceSource` 接入 Prometheus、Loki、Elasticsearch、Jaeger、GitHub 等系统。
+如果修复 Agent 返回不安全或无法识别的命令，事件会进入 `ESCALATED`。系统不会自动执行模型生成的命令。
+
+## 技术组件
+
+- Java 25、Spring Boot 3.5、Maven
+- MySQL 8：保存事件、证据、RCA、修复计划和审计记录
+- Prometheus：保存和查询指标
+- Loki：保存和查询日志
+- Grafana Alloy：把 Spring Boot 日志发送到 Loki
+- LangChain4j：调用 DeepSeek 等 OpenAI-compatible 模型
 
 ## 启动
 
-需要 JDK 21+ 和 Maven 3.9+：
+项目使用本机 MySQL，不需要创建 Docker MySQL。数据库名为 `incident_platform`。数据库配置在 `src/main/resources/application.yml`，生产环境应通过 `INCIDENT_DB_USERNAME` 和 `INCIDENT_DB_PASSWORD` 设置账号密码。
 
-```bash
+启动观测容器：
+
+```powershell
+docker start prometheus
+docker start loki
+docker start alloy
+docker ps
+```
+
+配置文件位于 `observability/prometheus/prometheus.yml` 和 `observability/alloy/config.alloy`。
+
+启动 Spring Boot：
+
+```powershell
 mvn spring-boot:run
 ```
 
-创建事件：
+健康检查：
 
-```bash
-curl -X POST http://localhost:8080/api/incidents \
-  -H 'Content-Type: application/json' \
-  -d '{"title":"payment-service 5xx 上升","service":"payment-service","environment":"production","severity":"P1","description":"5xx 从 0.1% 上升到 18%"}'
+```powershell
+Invoke-RestMethod "http://localhost:8080/actuator/health" |
+    ConvertTo-Json -Depth 5
 ```
 
-查询事件：
+## 创建事件
 
-```bash
-curl http://localhost:8080/api/incidents/{incidentId}
+```powershell
+$body = @{
+    title       = "Full observability acceptance test"
+    service     = "incident-platform"
+    environment = "local"
+    severity    = "P2"
+    description = "Verify Prometheus, Loki and MySQL end to end"
+} | ConvertTo-Json
+
+$result = Invoke-RestMethod `
+    -Method Post `
+    -Uri "http://localhost:8080/api/incidents" `
+    -ContentType "application/json; charset=utf-8" `
+    -Body ([System.Text.Encoding]::UTF8.GetBytes($body))
+
+$result | ConvertTo-Json -Depth 10
 ```
 
-审批修复计划：
+成功结果中，`evidence.items` 应包含 `prometheus` 和 `loki`，并返回事件 `id`。
 
-```bash
-curl -X POST http://localhost:8080/api/incidents/{incidentId}/approval \
-  -H 'Content-Type: application/json' \
-  -d '{"approved":true,"comment":"已确认变更窗口"}'
+## 查询和审批
+
+```powershell
+$id = "把创建事件返回的 id 粘贴到这里"
+
+Invoke-RestMethod `
+    -Method Get `
+    -Uri "http://localhost:8080/api/incidents/$id" |
+    ConvertTo-Json -Depth 10
 ```
 
-## 目录
+只有 `AWAITING_APPROVAL` 状态的事件可以审批：
 
-- `domain`：事件、证据、RCA、修复计划等领域对象
-- `agent`：各个专家 Agent 和编排器
-- `adapter`：HTTP API 与内存仓储
-- `port`：模型、观测和持久化的替换点
+```powershell
+$approvalBody = @{
+    approved = $true
+    comment  = "人工确认，允许执行低风险处理步骤"
+} | ConvertTo-Json
 
-## 后续路线
+Invoke-RestMethod `
+    -Method Post `
+    -Uri "http://localhost:8080/api/incidents/$id/approval" `
+    -ContentType "application/json; charset=utf-8" `
+    -Body ([System.Text.Encoding]::UTF8.GetBytes($approvalBody)) |
+    ConvertTo-Json -Depth 10
+```
 
-1. PostgreSQL + Flyway 持久化事件状态和审计记录
-2. OpenTelemetry、Prometheus、Loki、Jaeger 适配器
-3. LLM Gateway 与结构化输出校验
-4. Kafka/Temporal 异步编排与重试
-5. Slack/钉钉/企业微信通知及 RBAC
-6. 修复动作白名单、dry-run、回滚和策略引擎
+把 `approved` 改为 `$false` 会进入 `REJECTED`，并记录 `remediation.rejected` 审计动作。状态不允许审批时，接口返回 HTTP `409 Conflict`。
+
+## MySQL 查询
+
+进入 MySQL 后执行：
+
+```sql
+USE incident_platform;
+
+SELECT id, title, service, status, created_at
+FROM incidents
+WHERE id = '事件ID';
+
+SELECT JSON_PRETTY(evidence_json) AS evidence
+FROM incidents
+WHERE id = '事件ID';
+
+SELECT JSON_PRETTY(audit_json) AS audit
+FROM incidents
+WHERE id = '事件ID';
+```
+
+## 测试
+
+```powershell
+mvn test
+```
+
+当前测试覆盖 Prometheus、Loki、ContextAgent、RCA、Remediation 安全校验、`ESCALATED` 升级、`APPROVED` 和 `REJECTED` 审批、非法状态返回 `409`，以及完整持久化流程。
+
+## 目录说明
+
+- `domain`：事件、证据、RCA、修复计划和状态
+- `agent`：Triage、Context、RCA、Remediation Agent
+- `service`：多 Agent 编排和状态流转
+- `adapter`：HTTP、MySQL、Prometheus、Loki 适配器
+- `port`：可替换的仓储和证据源接口
+- `observability`：Prometheus 和 Alloy 配置
+- `src/test`：自动化测试
+
+## 安全边界
+
+- LLM 只能生成修复建议，不能直接执行命令；
+- 只有白名单占位符命令才能进入修复计划；
+- 不安全方案会升级为 `ESCALATED`；
+- 只有 `AWAITING_APPROVAL` 的事件可以审批；
+- 关键状态变化都会写入审计记录。
