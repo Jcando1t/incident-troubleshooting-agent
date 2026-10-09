@@ -156,4 +156,8 @@ public class IncidentOrchestrator {
     public Incident get(UUID id) {
         return repository.findById(id).orElseThrow();
     }
+
+    public List<Incident> findRecent(int limit) {
+        return repository.findRecent(limit);
+    }
 }

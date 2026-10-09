@@ -6,7 +6,10 @@ import com.example.incident.service.IncidentOrchestrator;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -24,6 +27,19 @@ public class IncidentController {
 
     @GetMapping("/{id}")
     public Incident get(@PathVariable UUID id) { return orchestrator.get(id); }
+
+    @GetMapping
+    public List<Incident> findRecent(
+            @RequestParam(defaultValue = "20")
+            int limit) {
+        if (limit < 1 || limit > 100) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "limit must be between 1 and 100"
+            );
+        }
+        return orchestrator.findRecent(limit);
+    }
 
     @PostMapping("/{id}/approval")
     public Incident approval(@PathVariable UUID id, @Valid @RequestBody ApprovalRequest request) {

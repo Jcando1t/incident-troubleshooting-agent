@@ -131,6 +131,56 @@ public class JdbcIncidentRepository implements IncidentRepository {
         );
     }
 
+    @Override
+    public List<Incident> findRecent(int limit) {
+        if (limit < 1) {
+            throw new IllegalArgumentException("limit must be at least 1");
+        }
+
+        var sql = """
+                SELECT id, title, service, environment, severity, description,
+                       status, created_at, triage_json, evidence_json,
+                       rca_json, remediation_json, audit_json
+                FROM incidents
+                ORDER BY created_at DESC
+                LIMIT ?
+                """;
+
+        return jdbcTemplate.query(
+                sql,
+                (resultSet, rowNumber) -> new Incident(
+                        UUID.fromString(resultSet.getString("id")),
+                        resultSet.getString("title"),
+                        resultSet.getString("service"),
+                        resultSet.getString("environment"),
+                        readSeverity(resultSet.getString("severity")),
+                        resultSet.getString("description"),
+                        IncidentStatus.valueOf(
+                                resultSet.getString("status")),
+                        resultSet.getTimestamp("created_at").toInstant(),
+                        readJson(
+                                resultSet.getString("triage_json"),
+                                TriageResult.class
+                        ),
+                        readJson(
+                                resultSet.getString("evidence_json"),
+                                EvidenceBundle.class
+                        ),
+                        readJson(
+                                resultSet.getString("rca_json"),
+                                RcaResult.class
+                        ),
+                        readJson(
+                                resultSet.getString("remediation_json"),
+                                RemediationPlan.class
+                        ),
+                        readAudit(resultSet.getString("audit_json"))
+                ),
+                limit
+        );
+    }
+
+
     private Severity readSeverity(String value) {
         return value == null ? null : Severity.valueOf(value);
     }
