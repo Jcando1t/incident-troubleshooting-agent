@@ -157,7 +157,11 @@ public class IncidentOrchestrator {
         return repository.findById(id).orElseThrow();
     }
 
-    public List<Incident> findRecent(int limit, int offset) {
-        return repository.findRecent(limit, offset);
+    public List<Incident> findRecent(
+            int limit,
+            int offset,
+            IncidentStatus status,
+            String service) {
+        return repository.findRecent(limit, offset, status, service);
     }
 }

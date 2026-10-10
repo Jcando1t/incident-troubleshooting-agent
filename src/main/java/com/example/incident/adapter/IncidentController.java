@@ -33,14 +33,24 @@ public class IncidentController {
             @RequestParam(defaultValue = "20")
             int limit,
             @RequestParam(defaultValue = "0")
-            int offset) {
+            int offset,
+            @RequestParam(required = false)
+            IncidentStatus status,
+            @RequestParam(required = false)
+            String service) {
         if (limit < 1 || limit > 100 || offset < 0 || offset > 100_000) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "limit must be between 1 and 100, and offset between 0 and 100000"
             );
         }
-        return orchestrator.findRecent(limit, offset);
+        if (service != null && service.isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "service cannot be blank"
+            );
+        }
+        return orchestrator.findRecent(limit, offset, status, service);
     }
 
     @PostMapping("/{id}/approval")

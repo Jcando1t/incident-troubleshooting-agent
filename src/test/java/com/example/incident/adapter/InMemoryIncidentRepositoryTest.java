@@ -23,7 +23,7 @@ class InMemoryIncidentRepositoryTest {
         repository.save(newest);
         repository.save(middle);
 
-        assertEquals(List.of(newest, middle), repository.findRecent(2, 0));
+        assertEquals(List.of(newest, middle), repository.findRecent(2, 0, null, null));
     }
 
     @Test
@@ -36,7 +36,7 @@ class InMemoryIncidentRepositoryTest {
         repository.save(middle);
         repository.save(newest);
 
-        assertEquals(List.of(middle), repository.findRecent(1, 1));
+        assertEquals(List.of(middle), repository.findRecent(1, 1, null, null));
     }
 
     @Test
@@ -44,7 +44,7 @@ class InMemoryIncidentRepositoryTest {
         var repository = new InMemoryIncidentRepository();
 
         assertThrows(IllegalArgumentException.class,
-                () -> repository.findRecent(0, 0));
+                () -> repository.findRecent(0, 0, null, null));
     }
 
     @Test
@@ -52,18 +52,41 @@ class InMemoryIncidentRepositoryTest {
         var repository = new InMemoryIncidentRepository();
 
         assertThrows(IllegalArgumentException.class,
-                () -> repository.findRecent(1, -1));
+                () -> repository.findRecent(1, -1, null, null));
+    }
+
+    @Test
+    void filtersIncidentsByStatusAndService() {
+        var repository = new InMemoryIncidentRepository();
+        var matching = incident("approved payment", "2026-10-03T00:00:00Z",
+                IncidentStatus.APPROVED, "payment-service");
+        repository.save(matching);
+        repository.save(incident("rejected payment", "2026-10-02T00:00:00Z",
+                IncidentStatus.REJECTED, "payment-service"));
+        repository.save(incident("approved search", "2026-10-01T00:00:00Z",
+                IncidentStatus.APPROVED, "search-service"));
+
+        assertEquals(List.of(matching), repository.findRecent(
+                10, 0, IncidentStatus.APPROVED, "payment-service"));
     }
 
     private Incident incident(String title, String createdAt) {
+        return incident(title, createdAt, IncidentStatus.RECEIVED, "incident-platform");
+    }
+
+    private Incident incident(
+            String title,
+            String createdAt,
+            IncidentStatus status,
+            String service) {
         return new Incident(
                 UUID.randomUUID(),
                 title,
-                "incident-platform",
+                service,
                 "local",
                 null,
                 "test incident",
-                IncidentStatus.RECEIVED,
+                status,
                 Instant.parse(createdAt),
                 null,
                 null,

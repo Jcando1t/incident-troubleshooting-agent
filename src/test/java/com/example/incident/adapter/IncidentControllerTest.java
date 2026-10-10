@@ -25,7 +25,7 @@ class IncidentControllerTest {
     @Test
     void listsRecentIncidentsUsingRequestedLimit() throws Exception {
         var orchestrator = mock(IncidentOrchestrator.class);
-        when(orchestrator.findRecent(2, 0)).thenReturn(List.of());
+        when(orchestrator.findRecent(2, 0, null, null)).thenReturn(List.of());
         MockMvc mvc = standaloneSetup(new IncidentController(orchestrator)).build();
 
         mvc.perform(get("/api/incidents").param("limit", "2"))
@@ -33,13 +33,13 @@ class IncidentControllerTest {
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$").isEmpty());
 
-        verify(orchestrator).findRecent(2, 0);
+        verify(orchestrator).findRecent(2, 0, null, null);
     }
 
     @Test
     void forwardsOffsetForNextPageOfIncidents() throws Exception {
         var orchestrator = mock(IncidentOrchestrator.class);
-        when(orchestrator.findRecent(2, 2)).thenReturn(List.of());
+        when(orchestrator.findRecent(2, 2, null, null)).thenReturn(List.of());
         MockMvc mvc = standaloneSetup(new IncidentController(orchestrator)).build();
 
         mvc.perform(get("/api/incidents")
@@ -47,7 +47,23 @@ class IncidentControllerTest {
                         .param("offset", "2"))
                 .andExpect(status().isOk());
 
-        verify(orchestrator).findRecent(2, 2);
+        verify(orchestrator).findRecent(2, 2, null, null);
+    }
+
+    @Test
+    void forwardsStatusAndServiceFilters() throws Exception {
+        var orchestrator = mock(IncidentOrchestrator.class);
+        var statusFilter = com.example.incident.domain.IncidentStatus.APPROVED;
+        when(orchestrator.findRecent(20, 0, statusFilter, "payment-service"))
+                .thenReturn(List.of());
+        MockMvc mvc = standaloneSetup(new IncidentController(orchestrator)).build();
+
+        mvc.perform(get("/api/incidents")
+                        .param("status", "APPROVED")
+                        .param("service", "payment-service"))
+                .andExpect(status().isOk());
+
+        verify(orchestrator).findRecent(20, 0, statusFilter, "payment-service");
     }
 
     @Test

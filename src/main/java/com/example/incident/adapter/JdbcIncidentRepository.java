@@ -17,6 +17,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -132,23 +133,39 @@ public class JdbcIncidentRepository implements IncidentRepository {
     }
 
     @Override
-    public List<Incident> findRecent(int limit, int offset) {
+    public List<Incident> findRecent(
+            int limit,
+            int offset,
+            IncidentStatus status,
+            String service) {
         if (limit < 1 || offset < 0) {
             throw new IllegalArgumentException("limit must be positive and offset cannot be negative");
         }
 
-        var sql = """
+        var sql = new StringBuilder("""
                 SELECT id, title, service, environment, severity, description,
                        status, created_at, triage_json, evidence_json,
                        rca_json, remediation_json, audit_json
                 FROM incidents
-                ORDER BY created_at DESC
-                LIMIT ?
-                OFFSET ?
-                """;
+                WHERE 1 = 1
+                """);
+        var parameters = new ArrayList<Object>();
+
+        if (status != null) {
+            sql.append(" AND status = ?");
+            parameters.add(status.name());
+        }
+        if (service != null) {
+            sql.append(" AND service = ?");
+            parameters.add(service);
+        }
+
+        sql.append(" ORDER BY created_at DESC LIMIT ? OFFSET ?");
+        parameters.add(limit);
+        parameters.add(offset);
 
         return jdbcTemplate.query(
-                sql,
+                sql.toString(),
                 (resultSet, rowNumber) -> new Incident(
                         UUID.fromString(resultSet.getString("id")),
                         resultSet.getString("title"),
@@ -177,8 +194,7 @@ public class JdbcIncidentRepository implements IncidentRepository {
                         ),
                         readAudit(resultSet.getString("audit_json"))
                 ),
-                limit,
-                offset
+                parameters.toArray()
         );
     }
 
