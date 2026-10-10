@@ -25,7 +25,7 @@ class IncidentControllerTest {
     @Test
     void listsRecentIncidentsUsingRequestedLimit() throws Exception {
         var orchestrator = mock(IncidentOrchestrator.class);
-        when(orchestrator.findRecent(2)).thenReturn(List.of());
+        when(orchestrator.findRecent(2, 0)).thenReturn(List.of());
         MockMvc mvc = standaloneSetup(new IncidentController(orchestrator)).build();
 
         mvc.perform(get("/api/incidents").param("limit", "2"))
@@ -33,7 +33,21 @@ class IncidentControllerTest {
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$").isEmpty());
 
-        verify(orchestrator).findRecent(2);
+        verify(orchestrator).findRecent(2, 0);
+    }
+
+    @Test
+    void forwardsOffsetForNextPageOfIncidents() throws Exception {
+        var orchestrator = mock(IncidentOrchestrator.class);
+        when(orchestrator.findRecent(2, 2)).thenReturn(List.of());
+        MockMvc mvc = standaloneSetup(new IncidentController(orchestrator)).build();
+
+        mvc.perform(get("/api/incidents")
+                        .param("limit", "2")
+                        .param("offset", "2"))
+                .andExpect(status().isOk());
+
+        verify(orchestrator).findRecent(2, 2);
     }
 
     @Test
@@ -42,6 +56,15 @@ class IncidentControllerTest {
         MockMvc mvc = standaloneSetup(new IncidentController(orchestrator)).build();
 
         mvc.perform(get("/api/incidents").param("limit", "101"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void rejectsNegativeIncidentOffset() throws Exception {
+        var orchestrator = mock(IncidentOrchestrator.class);
+        MockMvc mvc = standaloneSetup(new IncidentController(orchestrator)).build();
+
+        mvc.perform(get("/api/incidents").param("offset", "-1"))
                 .andExpect(status().isBadRequest());
     }
 

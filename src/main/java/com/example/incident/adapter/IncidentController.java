@@ -31,14 +31,16 @@ public class IncidentController {
     @GetMapping
     public List<Incident> findRecent(
             @RequestParam(defaultValue = "20")
-            int limit) {
-        if (limit < 1 || limit > 100) {
+            int limit,
+            @RequestParam(defaultValue = "0")
+            int offset) {
+        if (limit < 1 || limit > 100 || offset < 0 || offset > 100_000) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "limit must be between 1 and 100"
+                    "limit must be between 1 and 100, and offset between 0 and 100000"
             );
         }
-        return orchestrator.findRecent(limit);
+        return orchestrator.findRecent(limit, offset);
     }
 
     @PostMapping("/{id}/approval")

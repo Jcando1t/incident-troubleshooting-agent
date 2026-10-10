@@ -16,13 +16,14 @@ public class InMemoryIncidentRepository implements IncidentRepository {
     @Override public Optional<Incident> findById(UUID id) { return Optional.ofNullable(store.get(id)); }
 
     @Override
-    public List<Incident> findRecent(int limit) {
-        if (limit < 1) {
-            throw new IllegalArgumentException("limit must be at least 1");
+    public List<Incident> findRecent(int limit, int offset) {
+        if (limit < 1 || offset < 0) {
+            throw new IllegalArgumentException("limit must be positive and offset cannot be negative");
         }
 
         return store.values().stream()
                 .sorted(Comparator.comparing(Incident::createdAt).reversed())
+                .skip(offset)
                 .limit(limit)
                 .toList();
     }

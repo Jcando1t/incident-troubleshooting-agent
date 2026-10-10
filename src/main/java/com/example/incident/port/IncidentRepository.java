@@ -8,5 +8,5 @@ import java.util.UUID;
 public interface IncidentRepository {
     Incident save(Incident incident);
     Optional<Incident> findById(UUID id);
-    List<Incident> findRecent(int limit);
+    List<Incident> findRecent(int limit, int offset);
 }

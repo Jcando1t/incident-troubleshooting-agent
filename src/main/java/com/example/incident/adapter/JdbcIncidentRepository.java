@@ -132,9 +132,9 @@ public class JdbcIncidentRepository implements IncidentRepository {
     }
 
     @Override
-    public List<Incident> findRecent(int limit) {
-        if (limit < 1) {
-            throw new IllegalArgumentException("limit must be at least 1");
+    public List<Incident> findRecent(int limit, int offset) {
+        if (limit < 1 || offset < 0) {
+            throw new IllegalArgumentException("limit must be positive and offset cannot be negative");
         }
 
         var sql = """
@@ -144,6 +144,7 @@ public class JdbcIncidentRepository implements IncidentRepository {
                 FROM incidents
                 ORDER BY created_at DESC
                 LIMIT ?
+                OFFSET ?
                 """;
 
         return jdbcTemplate.query(
@@ -176,7 +177,8 @@ public class JdbcIncidentRepository implements IncidentRepository {
                         ),
                         readAudit(resultSet.getString("audit_json"))
                 ),
-                limit
+                limit,
+                offset
         );
     }
 

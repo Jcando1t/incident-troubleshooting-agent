@@ -23,7 +23,20 @@ class InMemoryIncidentRepositoryTest {
         repository.save(newest);
         repository.save(middle);
 
-        assertEquals(List.of(newest, middle), repository.findRecent(2));
+        assertEquals(List.of(newest, middle), repository.findRecent(2, 0));
+    }
+
+    @Test
+    void skipsRequestedNumberOfNewestIncidents() {
+        var repository = new InMemoryIncidentRepository();
+        var oldest = incident("oldest", "2026-10-01T00:00:00Z");
+        var middle = incident("middle", "2026-10-02T00:00:00Z");
+        var newest = incident("newest", "2026-10-03T00:00:00Z");
+        repository.save(oldest);
+        repository.save(middle);
+        repository.save(newest);
+
+        assertEquals(List.of(middle), repository.findRecent(1, 1));
     }
 
     @Test
@@ -31,7 +44,15 @@ class InMemoryIncidentRepositoryTest {
         var repository = new InMemoryIncidentRepository();
 
         assertThrows(IllegalArgumentException.class,
-                () -> repository.findRecent(0));
+                () -> repository.findRecent(0, 0));
+    }
+
+    @Test
+    void rejectsNegativeOffset() {
+        var repository = new InMemoryIncidentRepository();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> repository.findRecent(1, -1));
     }
 
     private Incident incident(String title, String createdAt) {
