@@ -154,7 +154,10 @@ public class IncidentOrchestrator {
     }
 
     public Incident get(UUID id) {
-        return repository.findById(id).orElseThrow();
+        return repository.findById(id)
+                .orElseThrow(() -> new IncidentNotFoundException(
+                        "Incident not found: " + id
+                ));
     }
 
     public List<Incident> findRecent(

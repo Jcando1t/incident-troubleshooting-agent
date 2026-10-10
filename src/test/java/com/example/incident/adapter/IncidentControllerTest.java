@@ -2,6 +2,7 @@ package com.example.incident.adapter;
 
 import com.example.incident.service.IncidentOrchestrator;
 import com.example.incident.service.IncidentStateConflictException;
+import com.example.incident.service.IncidentNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -82,6 +83,20 @@ class IncidentControllerTest {
 
         mvc.perform(get("/api/incidents").param("offset", "-1"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void returnsNotFoundWhenIncidentDoesNotExist() throws Exception {
+        var orchestrator = mock(IncidentOrchestrator.class);
+        var id = UUID.randomUUID();
+        when(orchestrator.get(id)).thenThrow(
+                new IncidentNotFoundException("Incident not found: " + id));
+        MockMvc mvc = standaloneSetup(new IncidentController(orchestrator)).build();
+
+        mvc.perform(get("/api/incidents/{id}", id))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("INCIDENT_NOT_FOUND"))
+                .andExpect(jsonPath("$.message").value("Incident not found: " + id));
     }
 
     @Test

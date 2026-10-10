@@ -2,6 +2,7 @@ package com.example.incident.adapter;
 
 import com.example.incident.domain.*;
 import com.example.incident.service.IncidentStateConflictException;
+import com.example.incident.service.IncidentNotFoundException;
 import com.example.incident.service.IncidentOrchestrator;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -62,6 +63,12 @@ public class IncidentController {
     @ResponseStatus(HttpStatus.CONFLICT)
     public ErrorResponse handleStateConflict(IncidentStateConflictException exception) {
         return new ErrorResponse("INCIDENT_STATE_CONFLICT", exception.getMessage());
+    }
+
+    @ExceptionHandler(IncidentNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ErrorResponse handleIncidentNotFound(IncidentNotFoundException exception) {
+        return new ErrorResponse("INCIDENT_NOT_FOUND", exception.getMessage());
     }
 
     public record CreateIncidentRequest(@NotBlank String title, @NotBlank String service,
