@@ -129,7 +129,11 @@ WHERE id = '事件ID';
 mvn test
 ```
 
-当前测试覆盖 Prometheus、Loki、ContextAgent、RCA、Remediation 安全校验、`ESCALATED` 升级、`APPROVED` 和 `REJECTED` 审批、非法状态返回 `409`，以及完整持久化流程。
+测试需要 Docker Desktop 正在运行。MySQL 仓储集成测试会自动启动一个临时 `mysql:8.4` 容器，测试结束后自动清理；它不会连接或清空你本机的 `incident_platform` 数据库。
+
+当前测试覆盖 Prometheus、Loki、ContextAgent、RCA、Remediation 安全校验、`ESCALATED` 升级、`APPROVED` 和 `REJECTED` 审批、非法状态返回 `409`，以及真实 MySQL 容器上的读写、筛选和分页。
+
+推送代码或创建 Pull Request 后，GitHub Actions 会自动运行同一套 `mvn test` 测试。
 
 ## 目录说明
 
