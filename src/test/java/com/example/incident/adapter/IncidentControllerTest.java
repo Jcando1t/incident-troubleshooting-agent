@@ -1,5 +1,6 @@
 package com.example.incident.adapter;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.example.incident.service.IncidentOrchestrator;
 import com.example.incident.service.IncidentStateConflictException;
 import com.example.incident.service.IncidentNotFoundException;
@@ -23,13 +24,17 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standal
 
 class IncidentControllerTest {
 
+    private static final String TEST_API_KEY = "test-secret";
+
     @Test
     void listsRecentIncidentsUsingRequestedLimit() throws Exception {
         var orchestrator = mock(IncidentOrchestrator.class);
         when(orchestrator.findRecent(2, 0, null, null)).thenReturn(List.of());
-        MockMvc mvc = standaloneSetup(new IncidentController(orchestrator)).build();
+        MockMvc mvc = secureMvc(orchestrator);
 
-        mvc.perform(get("/api/incidents").param("limit", "2"))
+        mvc.perform(get("/api/incidents")
+                        .header("X-API-Key", TEST_API_KEY)
+                        .param("limit", "2"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$").isEmpty());
@@ -41,9 +46,10 @@ class IncidentControllerTest {
     void forwardsOffsetForNextPageOfIncidents() throws Exception {
         var orchestrator = mock(IncidentOrchestrator.class);
         when(orchestrator.findRecent(2, 2, null, null)).thenReturn(List.of());
-        MockMvc mvc = standaloneSetup(new IncidentController(orchestrator)).build();
+        MockMvc mvc = secureMvc(orchestrator);
 
         mvc.perform(get("/api/incidents")
+                        .header("X-API-Key", TEST_API_KEY)
                         .param("limit", "2")
                         .param("offset", "2"))
                 .andExpect(status().isOk());
@@ -57,9 +63,10 @@ class IncidentControllerTest {
         var statusFilter = com.example.incident.domain.IncidentStatus.APPROVED;
         when(orchestrator.findRecent(20, 0, statusFilter, "payment-service"))
                 .thenReturn(List.of());
-        MockMvc mvc = standaloneSetup(new IncidentController(orchestrator)).build();
+        MockMvc mvc = secureMvc(orchestrator);
 
         mvc.perform(get("/api/incidents")
+                        .header("X-API-Key", TEST_API_KEY)
                         .param("status", "APPROVED")
                         .param("service", "payment-service"))
                 .andExpect(status().isOk());
@@ -70,18 +77,22 @@ class IncidentControllerTest {
     @Test
     void rejectsRecentIncidentLimitOutsideAllowedRange() throws Exception {
         var orchestrator = mock(IncidentOrchestrator.class);
-        MockMvc mvc = standaloneSetup(new IncidentController(orchestrator)).build();
+        MockMvc mvc = secureMvc(orchestrator);
 
-        mvc.perform(get("/api/incidents").param("limit", "101"))
+        mvc.perform(get("/api/incidents")
+                        .header("X-API-Key", TEST_API_KEY)
+                        .param("limit", "101"))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void rejectsNegativeIncidentOffset() throws Exception {
         var orchestrator = mock(IncidentOrchestrator.class);
-        MockMvc mvc = standaloneSetup(new IncidentController(orchestrator)).build();
+        MockMvc mvc = secureMvc(orchestrator);
 
-        mvc.perform(get("/api/incidents").param("offset", "-1"))
+        mvc.perform(get("/api/incidents")
+                        .header("X-API-Key", TEST_API_KEY)
+                        .param("offset", "-1"))
                 .andExpect(status().isBadRequest());
     }
 
@@ -91,9 +102,10 @@ class IncidentControllerTest {
         var id = UUID.randomUUID();
         when(orchestrator.get(id)).thenThrow(
                 new IncidentNotFoundException("Incident not found: " + id));
-        MockMvc mvc = standaloneSetup(new IncidentController(orchestrator)).build();
+        MockMvc mvc = secureMvc(orchestrator);
 
-        mvc.perform(get("/api/incidents/{id}", id))
+        mvc.perform(get("/api/incidents/{id}", id)
+                        .header("X-API-Key", TEST_API_KEY))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("INCIDENT_NOT_FOUND"))
                 .andExpect(jsonPath("$.message").value("Incident not found: " + id));
@@ -109,9 +121,10 @@ class IncidentControllerTest {
                         "Only incidents awaiting approval can be approved"
                 ));
 
-        MockMvc mvc = standaloneSetup(new IncidentController(orchestrator)).build();
+        MockMvc mvc = secureMvc(orchestrator);
 
         mvc.perform(post("/api/incidents/{id}/approval", id)
+                        .header("X-API-Key", TEST_API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"approved\":true,\"comment\":\"approve\"}"))
                 .andExpect(status().isConflict())
@@ -119,5 +132,23 @@ class IncidentControllerTest {
                         .value("INCIDENT_STATE_CONFLICT"))
                 .andExpect(jsonPath("$.message")
                         .value("Only incidents awaiting approval can be approved"));
+    }
+
+    @Test
+    void rejectsApiRequestWithoutApiKeyBeforeCallingOrchestrator() throws Exception {
+        var orchestrator = mock(IncidentOrchestrator.class);
+        MockMvc mvc = secureMvc(orchestrator);
+
+        mvc.perform(get("/api/incidents"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+
+        org.mockito.Mockito.verifyNoInteractions(orchestrator);
+    }
+
+    private MockMvc secureMvc(IncidentOrchestrator orchestrator) {
+        return standaloneSetup(new IncidentController(orchestrator))
+                .addInterceptors(new ApiKeyInterceptor(TEST_API_KEY, new ObjectMapper()))
+                .build();
     }
 }

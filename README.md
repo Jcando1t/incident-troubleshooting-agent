@@ -42,8 +42,26 @@ docker ps
 启动 Spring Boot：
 
 ```powershell
+$bytes = New-Object byte[] 32
+$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+$rng.GetBytes($bytes)
+$env:INCIDENT_API_KEY = [Convert]::ToBase64String($bytes)
+$rng.Dispose()
+Write-Host "Save this API key for your requests: $env:INCIDENT_API_KEY"
+
 mvn spring-boot:run
 ```
+
+`INCIDENT_API_KEY` 是保护业务 API 的密钥。请保存刚生成的值，不要提交到 Git。若从 IntelliJ 启动应用，请在 Run Configuration 的 Environment variables 中设置 `INCIDENT_API_KEY`。
+
+在另一个 PowerShell 窗口中，把刚才保存的密钥填入 `$apiKey`，后续 API 请求都通过 `X-API-Key` 请求头携带它：
+
+```powershell
+$apiKey = "把刚才生成的密钥粘贴到这里"
+$headers = @{ "X-API-Key" = $apiKey }
+```
+
+所有 `/api/**` 接口都需要这个请求头。未配置服务器密钥时，业务 API 返回 `503`；请求没有提供正确密钥时，返回 `401`。Actuator 健康检查和 Prometheus 指标接口不受此密钥保护，方便监控工具采集。此 API key 是所有调用方共用的门锁，不区分具体人员；不要通过公网明文 HTTP 暴露服务，正式远程部署还需要 HTTPS 和更细的用户权限。
 
 健康检查：
 
@@ -66,6 +84,7 @@ $body = @{
 $result = Invoke-RestMethod `
     -Method Post `
     -Uri "http://localhost:8080/api/incidents" `
+    -Headers $headers `
     -ContentType "application/json; charset=utf-8" `
     -Body ([System.Text.Encoding]::UTF8.GetBytes($body))
 
@@ -81,7 +100,8 @@ $id = "把创建事件返回的 id 粘贴到这里"
 
 Invoke-RestMethod `
     -Method Get `
-    -Uri "http://localhost:8080/api/incidents/$id" |
+    -Uri "http://localhost:8080/api/incidents/$id" `
+    -Headers $headers |
     ConvertTo-Json -Depth 10
 ```
 
@@ -96,6 +116,7 @@ $approvalBody = @{
 Invoke-RestMethod `
     -Method Post `
     -Uri "http://localhost:8080/api/incidents/$id/approval" `
+    -Headers $headers `
     -ContentType "application/json; charset=utf-8" `
     -Body ([System.Text.Encoding]::UTF8.GetBytes($approvalBody)) |
     ConvertTo-Json -Depth 10

@@ -17,6 +17,8 @@ management:
       exposure:
         include: health,info,metrics,prometheus
 app:
+  security:
+    api-key: ${INCIDENT_API_KEY:}
   llm:
     provider: deepseek
     api-key: ${DEEP_SEEK_API_KEY:}
