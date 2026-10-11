@@ -101,6 +101,18 @@ $result | ConvertTo-Json -Depth 10
 
 ## 查询和审批
 
+查询事件列表时，可以用 `createdFrom` 和 `createdTo` 按创建时间筛选。时间使用 ISO-8601 格式；两个端点都包含在结果中。比如查询 2026 年 10 月 1 日至 10 月 10 日创建的事件：
+
+```powershell
+Invoke-RestMethod `
+    -Method Get `
+    -Uri "http://localhost:8080/api/incidents?createdFrom=2026-10-01T00:00:00Z&createdTo=2026-10-10T23:59:59Z" `
+    -Headers $headers |
+    ConvertTo-Json -Depth 10
+```
+
+可以只提供起点或终点。若 `createdFrom` 晚于 `createdTo`，接口返回 HTTP `400 Bad Request`。
+
 ```powershell
 $id = "把创建事件返回的 id 粘贴到这里"
 
@@ -158,7 +170,7 @@ mvn test
 
 测试需要 Docker Desktop 正在运行。MySQL 仓储集成测试会自动启动一个临时 `mysql:8.4` 容器，测试结束后自动清理；它不会连接或清空你本机的 `incident_platform` 数据库。
 
-当前测试覆盖 Prometheus、Loki、ContextAgent、RCA、Remediation 安全校验、`ESCALATED` 升级、`APPROVED` 和 `REJECTED` 审批、非法状态返回 `409`，以及真实 MySQL 容器上的读写、筛选和分页。
+当前测试覆盖 Prometheus、Loki、ContextAgent、RCA、Remediation 安全校验、`ESCALATED` 升级、`APPROVED` 和 `REJECTED` 审批、非法状态返回 `409`，以及真实 MySQL 容器上的读写、筛选、时间范围和分页。
 
 推送代码或创建 Pull Request 后，GitHub Actions 会自动运行同一套 `mvn test` 测试。
 

@@ -5,6 +5,7 @@ import com.example.incident.service.IncidentStateConflictException;
 import com.example.incident.service.IncidentNotFoundException;
 import com.example.incident.service.IncidentOrchestrator;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -12,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -35,7 +37,7 @@ public class IncidentController {
     public Incident get(@PathVariable UUID id) { return orchestrator.get(id); }
 
     @GetMapping
-    @Operation(summary = "查询最近的故障事件", description = "可以按状态和服务名称筛选，并使用 limit、offset 控制分页。")
+    @Operation(summary = "查询最近的故障事件", description = "可以按状态、服务名称和创建时间范围筛选，并使用 limit、offset 控制分页。")
     public List<Incident> findRecent(
             @RequestParam(defaultValue = "20")
             int limit,
@@ -44,7 +46,13 @@ public class IncidentController {
             @RequestParam(required = false)
             IncidentStatus status,
             @RequestParam(required = false)
-            String service) {
+            String service,
+            @Parameter(description = "创建时间起点（包含），ISO-8601 格式，例如 2026-10-01T00:00:00Z")
+            @RequestParam(required = false)
+            Instant createdFrom,
+            @Parameter(description = "创建时间终点（包含），ISO-8601 格式，例如 2026-10-10T23:59:59Z")
+            @RequestParam(required = false)
+            Instant createdTo) {
         if (limit < 1 || limit > 100 || offset < 0 || offset > 100_000) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -57,7 +65,14 @@ public class IncidentController {
                     "service cannot be blank"
             );
         }
-        return orchestrator.findRecent(limit, offset, status, service);
+        if (createdFrom != null && createdTo != null && createdFrom.isAfter(createdTo)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "createdFrom must be earlier than or equal to createdTo"
+            );
+        }
+        return orchestrator.findRecent(
+                limit, offset, status, service, createdFrom, createdTo);
     }
 
     @PostMapping("/{id}/approval")

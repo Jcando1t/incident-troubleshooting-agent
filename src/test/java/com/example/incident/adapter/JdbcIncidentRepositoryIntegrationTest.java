@@ -94,10 +94,42 @@ class JdbcIncidentRepositoryIntegrationTest {
                 10,
                 1,
                 IncidentStatus.APPROVED,
-                "payment-service"
+                "payment-service",
+                null,
+                null
         );
 
         assertEquals(List.of(olderApproved), results);
+    }
+
+    @Test
+    void findsIncidentsWithinInclusiveCreationTimeRange() {
+        var before = incident("before range", "payment-service", IncidentStatus.RECEIVED,
+                "2026-10-01T23:59:59Z");
+        var atStart = incident("at start", "payment-service", IncidentStatus.RECEIVED,
+                "2026-10-02T00:00:00Z");
+        var inRange = incident("in range", "payment-service", IncidentStatus.RECEIVED,
+                "2026-10-03T12:00:00Z");
+        var atEnd = incident("at end", "payment-service", IncidentStatus.RECEIVED,
+                "2026-10-04T00:00:00Z");
+        var after = incident("after range", "payment-service", IncidentStatus.RECEIVED,
+                "2026-10-04T00:00:01Z");
+        repository.save(before);
+        repository.save(atStart);
+        repository.save(inRange);
+        repository.save(atEnd);
+        repository.save(after);
+
+        var results = repository.findRecent(
+                10,
+                0,
+                null,
+                null,
+                Instant.parse("2026-10-02T00:00:00Z"),
+                Instant.parse("2026-10-04T00:00:00Z")
+        );
+
+        assertEquals(List.of(atEnd, inRange, atStart), results);
     }
 
     private Incident incident(

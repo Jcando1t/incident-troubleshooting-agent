@@ -17,6 +17,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -137,7 +138,9 @@ public class JdbcIncidentRepository implements IncidentRepository {
             int limit,
             int offset,
             IncidentStatus status,
-            String service) {
+            String service,
+            Instant createdFrom,
+            Instant createdTo) {
         if (limit < 1 || offset < 0) {
             throw new IllegalArgumentException("limit must be positive and offset cannot be negative");
         }
@@ -158,6 +161,14 @@ public class JdbcIncidentRepository implements IncidentRepository {
         if (service != null) {
             sql.append(" AND service = ?");
             parameters.add(service);
+        }
+        if (createdFrom != null) {
+            sql.append(" AND created_at >= ?");
+            parameters.add(Timestamp.from(createdFrom));
+        }
+        if (createdTo != null) {
+            sql.append(" AND created_at <= ?");
+            parameters.add(Timestamp.from(createdTo));
         }
 
         sql.append(" ORDER BY created_at DESC LIMIT ? OFFSET ?");

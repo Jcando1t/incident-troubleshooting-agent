@@ -164,7 +164,10 @@ public class IncidentOrchestrator {
             int limit,
             int offset,
             IncidentStatus status,
-            String service) {
-        return repository.findRecent(limit, offset, status, service);
+            String service,
+            Instant createdFrom,
+            Instant createdTo) {
+        return repository.findRecent(
+                limit, offset, status, service, createdFrom, createdTo);
     }
 }

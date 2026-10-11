@@ -10,6 +10,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.UUID;
 import java.util.List;
+import java.time.Instant;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -29,7 +30,7 @@ class IncidentControllerTest {
     @Test
     void listsRecentIncidentsUsingRequestedLimit() throws Exception {
         var orchestrator = mock(IncidentOrchestrator.class);
-        when(orchestrator.findRecent(2, 0, null, null)).thenReturn(List.of());
+        when(orchestrator.findRecent(2, 0, null, null, null, null)).thenReturn(List.of());
         MockMvc mvc = secureMvc(orchestrator);
 
         mvc.perform(get("/api/incidents")
@@ -39,13 +40,13 @@ class IncidentControllerTest {
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$").isEmpty());
 
-        verify(orchestrator).findRecent(2, 0, null, null);
+        verify(orchestrator).findRecent(2, 0, null, null, null, null);
     }
 
     @Test
     void forwardsOffsetForNextPageOfIncidents() throws Exception {
         var orchestrator = mock(IncidentOrchestrator.class);
-        when(orchestrator.findRecent(2, 2, null, null)).thenReturn(List.of());
+        when(orchestrator.findRecent(2, 2, null, null, null, null)).thenReturn(List.of());
         MockMvc mvc = secureMvc(orchestrator);
 
         mvc.perform(get("/api/incidents")
@@ -54,14 +55,14 @@ class IncidentControllerTest {
                         .param("offset", "2"))
                 .andExpect(status().isOk());
 
-        verify(orchestrator).findRecent(2, 2, null, null);
+        verify(orchestrator).findRecent(2, 2, null, null, null, null);
     }
 
     @Test
     void forwardsStatusAndServiceFilters() throws Exception {
         var orchestrator = mock(IncidentOrchestrator.class);
         var statusFilter = com.example.incident.domain.IncidentStatus.APPROVED;
-        when(orchestrator.findRecent(20, 0, statusFilter, "payment-service"))
+        when(orchestrator.findRecent(20, 0, statusFilter, "payment-service", null, null))
                 .thenReturn(List.of());
         MockMvc mvc = secureMvc(orchestrator);
 
@@ -71,7 +72,39 @@ class IncidentControllerTest {
                         .param("service", "payment-service"))
                 .andExpect(status().isOk());
 
-        verify(orchestrator).findRecent(20, 0, statusFilter, "payment-service");
+        verify(orchestrator).findRecent(20, 0, statusFilter, "payment-service", null, null);
+    }
+
+    @Test
+    void forwardsCreationTimeRangeFilters() throws Exception {
+        var orchestrator = mock(IncidentOrchestrator.class);
+        var from = Instant.parse("2026-10-01T00:00:00Z");
+        var to = Instant.parse("2026-10-10T23:59:59Z");
+        when(orchestrator.findRecent(20, 0, null, null, from, to))
+                .thenReturn(List.of());
+        MockMvc mvc = secureMvc(orchestrator);
+
+        mvc.perform(get("/api/incidents")
+                        .header("X-API-Key", TEST_API_KEY)
+                        .param("createdFrom", "2026-10-01T00:00:00Z")
+                        .param("createdTo", "2026-10-10T23:59:59Z"))
+                .andExpect(status().isOk());
+
+        verify(orchestrator).findRecent(20, 0, null, null, from, to);
+    }
+
+    @Test
+    void rejectsCreationTimeRangeWhenStartIsAfterEnd() throws Exception {
+        var orchestrator = mock(IncidentOrchestrator.class);
+        MockMvc mvc = secureMvc(orchestrator);
+
+        mvc.perform(get("/api/incidents")
+                        .header("X-API-Key", TEST_API_KEY)
+                        .param("createdFrom", "2026-10-10T00:00:00Z")
+                        .param("createdTo", "2026-10-01T00:00:00Z"))
+                .andExpect(status().isBadRequest());
+
+        org.mockito.Mockito.verifyNoInteractions(orchestrator);
     }
 
     @Test

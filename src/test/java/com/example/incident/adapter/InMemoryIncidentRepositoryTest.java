@@ -23,7 +23,7 @@ class InMemoryIncidentRepositoryTest {
         repository.save(newest);
         repository.save(middle);
 
-        assertEquals(List.of(newest, middle), repository.findRecent(2, 0, null, null));
+        assertEquals(List.of(newest, middle), repository.findRecent(2, 0, null, null, null, null));
     }
 
     @Test
@@ -36,7 +36,7 @@ class InMemoryIncidentRepositoryTest {
         repository.save(middle);
         repository.save(newest);
 
-        assertEquals(List.of(middle), repository.findRecent(1, 1, null, null));
+        assertEquals(List.of(middle), repository.findRecent(1, 1, null, null, null, null));
     }
 
     @Test
@@ -44,7 +44,7 @@ class InMemoryIncidentRepositoryTest {
         var repository = new InMemoryIncidentRepository();
 
         assertThrows(IllegalArgumentException.class,
-                () -> repository.findRecent(0, 0, null, null));
+                () -> repository.findRecent(0, 0, null, null, null, null));
     }
 
     @Test
@@ -52,7 +52,7 @@ class InMemoryIncidentRepositoryTest {
         var repository = new InMemoryIncidentRepository();
 
         assertThrows(IllegalArgumentException.class,
-                () -> repository.findRecent(1, -1, null, null));
+                () -> repository.findRecent(1, -1, null, null, null, null));
     }
 
     @Test
@@ -67,7 +67,34 @@ class InMemoryIncidentRepositoryTest {
                 IncidentStatus.APPROVED, "search-service"));
 
         assertEquals(List.of(matching), repository.findRecent(
-                10, 0, IncidentStatus.APPROVED, "payment-service"));
+                10, 0, IncidentStatus.APPROVED, "payment-service", null, null));
+    }
+
+    @Test
+    void filtersByInclusiveCreationTimeRange() {
+        var repository = new InMemoryIncidentRepository();
+        var before = incident("before", "2026-10-01T23:59:59Z");
+        var atStart = incident("at start", "2026-10-02T00:00:00Z");
+        var between = incident("between", "2026-10-03T12:00:00Z");
+        var atEnd = incident("at end", "2026-10-04T00:00:00Z");
+        var after = incident("after", "2026-10-04T00:00:01Z");
+        repository.save(before);
+        repository.save(atStart);
+        repository.save(between);
+        repository.save(atEnd);
+        repository.save(after);
+
+        assertEquals(
+                List.of(atEnd, between, atStart),
+                repository.findRecent(
+                        10,
+                        0,
+                        null,
+                        null,
+                        Instant.parse("2026-10-02T00:00:00Z"),
+                        Instant.parse("2026-10-04T00:00:00Z")
+                )
+        );
     }
 
     private Incident incident(String title, String createdAt) {
