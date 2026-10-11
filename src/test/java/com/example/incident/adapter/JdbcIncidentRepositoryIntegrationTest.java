@@ -2,6 +2,7 @@ package com.example.incident.adapter;
 
 import com.example.incident.domain.Incident;
 import com.example.incident.domain.IncidentStatus;
+import com.example.incident.domain.KnowledgeDocument;
 import com.example.incident.domain.Project;
 import com.example.incident.domain.Severity;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,6 +16,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
@@ -33,6 +35,7 @@ class JdbcIncidentRepositoryIntegrationTest {
     private JdbcTemplate jdbcTemplate;
     private JdbcIncidentRepository repository;
     private JdbcProjectRepository projectRepository;
+    private JdbcKnowledgeDocumentRepository knowledgeDocumentRepository;
 
     @BeforeEach
     void setUp() {
@@ -48,9 +51,11 @@ class JdbcIncidentRepositoryIntegrationTest {
                 .migrate();
 
         jdbcTemplate = new JdbcTemplate(dataSource);
+        jdbcTemplate.update("DELETE FROM project_knowledge_documents");
         jdbcTemplate.update("DELETE FROM incidents");
         repository = new JdbcIncidentRepository(jdbcTemplate, new ObjectMapper());
         projectRepository = new JdbcProjectRepository(jdbcTemplate);
+        knowledgeDocumentRepository = new JdbcKnowledgeDocumentRepository(jdbcTemplate);
     }
 
     @Test
@@ -98,6 +103,37 @@ class JdbcIncidentRepositoryIntegrationTest {
         assertEquals(project, projectRepository.findById(project.id()).orElseThrow());
         assertEquals(project.id(), repository.findById(incident.id()).orElseThrow().projectId());
         assertTrue(projectRepository.findAll().contains(project));
+    }
+
+    @Test
+    void storesKnowledgeDocumentsSeparatelyForEachProject() {
+        var projectA = projectRepository.save(new Project(UUID.randomUUID(), "Project A", Instant.now()));
+        var projectB = projectRepository.save(new Project(UUID.randomUUID(), "Project B", Instant.now()));
+        var documentA = knowledgeDocument(projectA.id(), "A runbook", "Only Project A can see this.");
+        var documentB = knowledgeDocument(projectB.id(), "B runbook", "Only Project B can see this.");
+
+        knowledgeDocumentRepository.create(documentA);
+        knowledgeDocumentRepository.create(documentB);
+
+        assertEquals(List.of(documentA), knowledgeDocumentRepository.findByProjectId(projectA.id()));
+        assertTrue(knowledgeDocumentRepository.findByProjectIdAndId(projectB.id(), documentA.id()).isEmpty());
+        assertEquals(documentB, knowledgeDocumentRepository.findByProjectIdAndId(projectB.id(), documentB.id())
+                .orElseThrow());
+
+        var updated = new KnowledgeDocument(
+                documentA.id(), documentA.projectId(), "Updated runbook", "Updated text",
+                documentA.createdAt(), Instant.now().plusSeconds(1).truncatedTo(ChronoUnit.MICROS));
+        knowledgeDocumentRepository.update(updated);
+        assertEquals(updated, knowledgeDocumentRepository.findByProjectIdAndId(projectA.id(), documentA.id())
+                .orElseThrow());
+
+        assertTrue(knowledgeDocumentRepository.deleteByProjectIdAndId(projectA.id(), documentA.id()));
+        assertTrue(knowledgeDocumentRepository.findByProjectId(projectA.id()).isEmpty());
+    }
+
+    private KnowledgeDocument knowledgeDocument(UUID projectId, String title, String content) {
+        var now = Instant.now().truncatedTo(ChronoUnit.MICROS);
+        return new KnowledgeDocument(UUID.randomUUID(), projectId, title, content, now, now);
     }
 
     @Test

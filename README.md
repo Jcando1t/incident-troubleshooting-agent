@@ -95,6 +95,21 @@ $projectId = $project.id
 
 也可以通过 `GET /api/projects` 查看已登记项目。创建事件时必须带上对应的 `projectId`；未登记的项目 ID 会返回 HTTP `404`。
 
+## 管理项目知识资料
+
+每个项目都可以单独添加、查看、修改和删除纯文本知识资料。当前阶段先保存资料原文，还没有做向量化和 RAG 检索；后续会在检索时按项目 ID 隔离资料。
+
+在 Swagger UI 中使用 `POST /api/projects/{projectId}/knowledge-documents` 添加资料，请把 `{projectId}` 换成项目 ID，请求体例如：
+
+```json
+{
+  "title": "MySQL 连接故障排查手册",
+  "content": "1. 确认 MySQL 服务正在运行。\n2. 检查数据库地址、端口、用户名和密码。\n3. 查看应用日志中的数据库连接错误。"
+}
+```
+
+对应项目的资料可以通过 `GET /api/projects/{projectId}/knowledge-documents` 查看；单份资料支持 `GET`、`PUT` 和 `DELETE`。资料只会出现在 URL 指定项目的列表中。
+
 ## 创建事件
 
 ```powershell
