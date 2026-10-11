@@ -31,6 +31,7 @@ public class IncidentOrchestrator {
     }
 
     public Incident create(
+            UUID projectId,
             String title,
             String service,
             String environment,
@@ -39,6 +40,7 @@ public class IncidentOrchestrator {
 
         var incident = new Incident(
                 UUID.randomUUID(),
+                projectId,
                 title,
                 service,
                 environment,
@@ -72,6 +74,7 @@ public class IncidentOrchestrator {
 
         var incidentWithAnalysisContext = new Incident(
                 incident.id(),
+                incident.projectId(),
                 incident.title(),
                 incident.service(),
                 incident.environment(),
@@ -107,6 +110,7 @@ public class IncidentOrchestrator {
         } catch (IllegalStateException ex) {
             var escalated = new Incident(
                     incident.id(),
+                    incident.projectId(),
                     incident.title(),
                     incident.service(),
                     incident.environment(),

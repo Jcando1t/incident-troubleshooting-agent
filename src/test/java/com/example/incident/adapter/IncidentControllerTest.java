@@ -4,6 +4,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.example.incident.service.IncidentOrchestrator;
 import com.example.incident.service.IncidentStateConflictException;
 import com.example.incident.service.IncidentNotFoundException;
+import com.example.incident.service.ProjectService;
+import com.example.incident.service.ProjectNotFoundException;
+import com.example.incident.domain.Incident;
+import com.example.incident.domain.IncidentStatus;
+import com.example.incident.domain.Project;
+import com.example.incident.domain.Severity;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -179,8 +185,96 @@ class IncidentControllerTest {
         org.mockito.Mockito.verifyNoInteractions(orchestrator);
     }
 
+    @Test
+    void requiresProjectIdWhenCreatingIncident() throws Exception {
+        var orchestrator = mock(IncidentOrchestrator.class);
+        MockMvc mvc = secureMvc(orchestrator);
+
+        mvc.perform(post("/api/incidents")
+                        .header("X-API-Key", TEST_API_KEY)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title":"test","service":"payment-service",
+                                 "environment":"test","description":"test"}
+                                """))
+                .andExpect(status().isBadRequest());
+
+        org.mockito.Mockito.verifyNoInteractions(orchestrator);
+    }
+
+    @Test
+    void rejectsIncidentForUnregisteredProject() throws Exception {
+        var orchestrator = mock(IncidentOrchestrator.class);
+        var projectService = mock(ProjectService.class);
+        var projectId = UUID.randomUUID();
+        when(projectService.get(projectId)).thenThrow(new ProjectNotFoundException(projectId));
+        MockMvc mvc = standaloneSetup(new IncidentController(orchestrator, projectService))
+                .addInterceptors(new ApiKeyInterceptor(TEST_API_KEY, new ObjectMapper()))
+                .build();
+
+        mvc.perform(post("/api/incidents")
+                        .header("X-API-Key", TEST_API_KEY)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"projectId":"%s","title":"test","service":"payment-service",
+                                 "environment":"test","description":"test"}
+                                """.formatted(projectId)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("PROJECT_NOT_FOUND"));
+
+        org.mockito.Mockito.verifyNoInteractions(orchestrator);
+    }
+
+    @Test
+    void createsIncidentUsingRegisteredProjectId() throws Exception {
+        var orchestrator = mock(IncidentOrchestrator.class);
+        var projectService = mock(ProjectService.class);
+        var projectId = UUID.randomUUID();
+        var incident = new Incident(
+                UUID.randomUUID(),
+                projectId,
+                "test incident",
+                "payment-service",
+                "test",
+                Severity.P2,
+                "database timeout",
+                IncidentStatus.RECEIVED,
+                Instant.parse("2026-10-11T00:00:00Z"),
+                null,
+                null,
+                null,
+                null,
+                List.of()
+        );
+        when(projectService.get(projectId)).thenReturn(
+                new Project(projectId, "Payments", Instant.parse("2026-10-10T00:00:00Z")));
+        when(orchestrator.create(
+                projectId, "test incident", "payment-service", "test",
+                Severity.P2, "database timeout"))
+                .thenReturn(incident);
+        MockMvc mvc = standaloneSetup(new IncidentController(orchestrator, projectService))
+                .addInterceptors(new ApiKeyInterceptor(TEST_API_KEY, new ObjectMapper()))
+                .build();
+
+        mvc.perform(post("/api/incidents")
+                        .header("X-API-Key", TEST_API_KEY)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"projectId":"%s","title":"test incident",
+                                 "service":"payment-service","environment":"test",
+                                 "severity":"P2","description":"database timeout"}
+                                """.formatted(projectId)))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.projectId").value(projectId.toString()));
+
+        verify(orchestrator).create(
+                projectId, "test incident", "payment-service", "test",
+                Severity.P2, "database timeout");
+    }
+
     private MockMvc secureMvc(IncidentOrchestrator orchestrator) {
-        return standaloneSetup(new IncidentController(orchestrator))
+        return standaloneSetup(new IncidentController(
+                        orchestrator, mock(ProjectService.class)))
                 .addInterceptors(new ApiKeyInterceptor(TEST_API_KEY, new ObjectMapper()))
                 .build();
     }

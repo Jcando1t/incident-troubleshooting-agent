@@ -2,6 +2,7 @@ package com.example.incident.adapter;
 
 import com.example.incident.domain.Incident;
 import com.example.incident.domain.IncidentStatus;
+import com.example.incident.domain.Project;
 import com.example.incident.domain.Severity;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.flywaydb.core.Flyway;
@@ -31,6 +32,7 @@ class JdbcIncidentRepositoryIntegrationTest {
 
     private JdbcTemplate jdbcTemplate;
     private JdbcIncidentRepository repository;
+    private JdbcProjectRepository projectRepository;
 
     @BeforeEach
     void setUp() {
@@ -48,6 +50,7 @@ class JdbcIncidentRepositoryIntegrationTest {
         jdbcTemplate = new JdbcTemplate(dataSource);
         jdbcTemplate.update("DELETE FROM incidents");
         repository = new JdbcIncidentRepository(jdbcTemplate, new ObjectMapper());
+        projectRepository = new JdbcProjectRepository(jdbcTemplate);
     }
 
     @Test
@@ -64,6 +67,37 @@ class JdbcIncidentRepositoryIntegrationTest {
         var loaded = repository.findById(incident.id());
         assertTrue(loaded.isPresent());
         assertEquals(incident, loaded.orElseThrow());
+    }
+
+    @Test
+    void storesProjectAndKeepsIncidentLinkedToThatProject() {
+        var project = projectRepository.save(new Project(
+                UUID.randomUUID(),
+                "求职 Agent",
+                Instant.parse("2026-10-11T00:00:00Z")
+        ));
+        var incident = new Incident(
+                UUID.randomUUID(),
+                project.id(),
+                "project-scoped incident",
+                "job-agent-api",
+                "test",
+                Severity.P2,
+                "test incident",
+                IncidentStatus.RECEIVED,
+                Instant.parse("2026-10-11T01:00:00Z"),
+                null,
+                null,
+                null,
+                null,
+                List.of()
+        );
+
+        repository.save(incident);
+
+        assertEquals(project, projectRepository.findById(project.id()).orElseThrow());
+        assertEquals(project.id(), repository.findById(incident.id()).orElseThrow().projectId());
+        assertTrue(projectRepository.findAll().contains(project));
     }
 
     @Test

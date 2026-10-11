@@ -41,12 +41,13 @@ public class JdbcIncidentRepository implements IncidentRepository {
     public Incident save(Incident incident) {
         var sql = """
                 INSERT INTO incidents (
-                    id, title, service, environment, severity, description,
+                    id, project_id, title, service, environment, severity, description,
                     status, created_at, triage_json, evidence_json,
                     rca_json, remediation_json, audit_json
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON DUPLICATE KEY UPDATE
+                    project_id = VALUES(project_id),
                     title = VALUES(title),
                     service = VALUES(service),
                     environment = VALUES(environment),
@@ -64,6 +65,7 @@ public class JdbcIncidentRepository implements IncidentRepository {
         jdbcTemplate.update(
                 sql,
                 incident.id().toString(),
+                incident.projectId().toString(),
                 incident.title(),
                 incident.service(),
                 incident.environment(),
@@ -86,7 +88,7 @@ public class JdbcIncidentRepository implements IncidentRepository {
     @Override
     public Optional<Incident> findById(UUID id) {
         var sql = """
-                SELECT id, title, service, environment, severity, description,
+                SELECT id, project_id, title, service, environment, severity, description,
                        status, created_at, triage_json, evidence_json,
                        rca_json, remediation_json, audit_json
                 FROM incidents
@@ -102,6 +104,7 @@ public class JdbcIncidentRepository implements IncidentRepository {
 
                     return Optional.of(new Incident(
                             UUID.fromString(resultSet.getString("id")),
+                            UUID.fromString(resultSet.getString("project_id")),
                             resultSet.getString("title"),
                             resultSet.getString("service"),
                             resultSet.getString("environment"),
@@ -146,7 +149,7 @@ public class JdbcIncidentRepository implements IncidentRepository {
         }
 
         var sql = new StringBuilder("""
-                SELECT id, title, service, environment, severity, description,
+                SELECT id, project_id, title, service, environment, severity, description,
                        status, created_at, triage_json, evidence_json,
                        rca_json, remediation_json, audit_json
                 FROM incidents
@@ -179,6 +182,7 @@ public class JdbcIncidentRepository implements IncidentRepository {
                 sql.toString(),
                 (resultSet, rowNumber) -> new Incident(
                         UUID.fromString(resultSet.getString("id")),
+                        UUID.fromString(resultSet.getString("project_id")),
                         resultSet.getString("title"),
                         resultSet.getString("service"),
                         resultSet.getString("environment"),

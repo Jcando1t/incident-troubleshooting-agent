@@ -76,10 +76,30 @@ API 交互文档（页面中接口标题和说明为中文）：
 - 原始 OpenAPI 说明位于 `http://localhost:8080/v3/api-docs`；
 - 在 Swagger UI 中点击 **Authorize**，填入 API key 的值（不用加 `Bearer` 前缀），之后再试 `/api/**` 接口。
 
+## 登记项目并创建事件
+
+创建故障前，先登记项目。服务会返回一个稳定的项目 ID；之后提交该项目的故障都使用这个 ID。不同项目使用不同 ID，后续知识检索就可以按 ID 限定范围。
+
+```powershell
+$projectBody = @{ name = "求职 Agent" } | ConvertTo-Json
+$project = Invoke-RestMethod `
+    -Method Post `
+    -Uri "http://localhost:8080/api/projects" `
+    -Headers $headers `
+    -ContentType "application/json; charset=utf-8" `
+    -Body ([System.Text.Encoding]::UTF8.GetBytes($projectBody))
+
+$project | ConvertTo-Json -Depth 5
+$projectId = $project.id
+```
+
+也可以通过 `GET /api/projects` 查看已登记项目。创建事件时必须带上对应的 `projectId`；未登记的项目 ID 会返回 HTTP `404`。
+
 ## 创建事件
 
 ```powershell
 $body = @{
+    projectId  = $projectId
     title       = "Full observability acceptance test"
     service     = "incident-platform"
     environment = "local"
@@ -170,7 +190,7 @@ mvn test
 
 测试需要 Docker Desktop 正在运行。MySQL 仓储集成测试会自动启动一个临时 `mysql:8.4` 容器，测试结束后自动清理；它不会连接或清空你本机的 `incident_platform` 数据库。
 
-当前测试覆盖 Prometheus、Loki、ContextAgent、RCA、Remediation 安全校验、`ESCALATED` 升级、`APPROVED` 和 `REJECTED` 审批、非法状态返回 `409`，以及真实 MySQL 容器上的读写、筛选、时间范围和分页。
+当前测试覆盖 Prometheus、Loki、ContextAgent、RCA、Remediation 安全校验、`ESCALATED` 升级、`APPROVED` 和 `REJECTED` 审批、非法状态返回 `409`，项目登记和故障关联，以及真实 MySQL 容器上的读写、筛选、时间范围和分页。
 
 推送代码或创建 Pull Request 后，GitHub Actions 会自动运行同一套 `mvn test` 测试。
 

@@ -4,11 +4,14 @@ import com.example.incident.domain.*;
 import com.example.incident.service.IncidentStateConflictException;
 import com.example.incident.service.IncidentNotFoundException;
 import com.example.incident.service.IncidentOrchestrator;
+import com.example.incident.service.ProjectNotFoundException;
+import com.example.incident.service.ProjectService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
@@ -22,13 +25,21 @@ import java.util.UUID;
 @Tag(name = "故障事件", description = "接收、查询和审批故障事件")
 public class IncidentController {
     private final IncidentOrchestrator orchestrator;
-    public IncidentController(IncidentOrchestrator orchestrator) { this.orchestrator = orchestrator; }
+    private final ProjectService projectService;
+
+    public IncidentController(
+            IncidentOrchestrator orchestrator,
+            ProjectService projectService) {
+        this.orchestrator = orchestrator;
+        this.projectService = projectService;
+    }
 
     @PostMapping
     @ResponseStatus(HttpStatus.ACCEPTED)
     @Operation(summary = "创建并分析故障事件", description = "提交事件后，系统会依次执行分诊、证据收集、根因分析和修复建议生成。")
     public Incident create(@Valid @RequestBody CreateIncidentRequest request) {
-        return orchestrator.create(request.title(), request.service(), request.environment(),
+        projectService.get(request.projectId());
+        return orchestrator.create(request.projectId(), request.title(), request.service(), request.environment(),
                 request.severity(), request.description());
     }
 
@@ -93,7 +104,13 @@ public class IncidentController {
         return new ErrorResponse("INCIDENT_NOT_FOUND", exception.getMessage());
     }
 
-    public record CreateIncidentRequest(@NotBlank String title, @NotBlank String service,
+    @ExceptionHandler(ProjectNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ErrorResponse handleProjectNotFound(ProjectNotFoundException exception) {
+        return new ErrorResponse("PROJECT_NOT_FOUND", exception.getMessage());
+    }
+
+    public record CreateIncidentRequest(@NotNull UUID projectId, @NotBlank String title, @NotBlank String service,
                                         @NotBlank String environment, Severity severity,
                                         @NotBlank String description) {}
     public record ApprovalRequest(boolean approved, String comment) {}
