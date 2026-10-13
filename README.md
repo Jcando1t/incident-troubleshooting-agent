@@ -76,6 +76,21 @@ API 交互文档（页面中接口标题和说明为中文）：
 - 原始 OpenAPI 说明位于 `http://localhost:8080/v3/api-docs`；
 - 在 Swagger UI 中点击 **Authorize**，填入 API key 的值（不用加 `Bearer` 前缀），之后再试 `/api/**` 接口。
 
+## 本地文字向量模型（Ollama）
+
+Ollama 在本机运行 embedding 模型。当前配置使用适合多语言检索的 `bge-m3`；它把文字变成数字向量，和 DeepSeek 的聊天分析职责不同。默认地址为 `http://localhost:11434`，可以通过 `OLLAMA_BASE_URL` 和 `OLLAMA_EMBEDDING_MODEL` 环境变量调整。
+
+安装并启动 Ollama 后，在 PowerShell 下载模型：
+
+```powershell
+ollama pull bge-m3
+ollama list
+```
+
+在 Swagger 中调用 `POST /api/projects/{projectId}/knowledge-documents/{documentId}/embedding/index`，系统会把资料分成小段、调用 Ollama 生成向量，并保存到 MySQL。成功响应会显示模型名称和分段数量。资料新建后要调用这个接口建立向量索引；资料修改后旧索引会清除，需要重新调用。
+
+创建故障事件时，RCA 流程会用事件标题、服务名和描述生成查询向量，只从该事件的 `projectId` 对应资料中找最相似的 3 个片段，并把片段作为带来源引用的证据交给 RCA Agent。当前项目没有已建立索引的资料时，检索结果为空；Ollama 不可用时会记录警告并继续原来的故障分析流程。
+
 ## 登记项目并创建事件
 
 创建故障前，先登记项目。服务会返回一个稳定的项目 ID；之后提交该项目的故障都使用这个 ID。不同项目使用不同 ID，后续知识检索就可以按 ID 限定范围。

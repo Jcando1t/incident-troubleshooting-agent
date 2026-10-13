@@ -24,6 +24,10 @@ app:
     api-key: ${DEEP_SEEK_API_KEY:}
     base-url: https://api.deepseek.com
     model: deepseek-chat
+  rag:
+    embedding:
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+      model: ${OLLAMA_EMBEDDING_MODEL:bge-m3}
   observability:
       prometheus-url: http://localhost:9090
       loki-url: http://localhost:3100

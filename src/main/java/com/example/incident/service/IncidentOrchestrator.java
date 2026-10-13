@@ -3,6 +3,7 @@ package com.example.incident.service;
 import com.example.incident.agent.*;
 import com.example.incident.domain.*;
 import com.example.incident.port.IncidentRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -16,6 +17,7 @@ public class IncidentOrchestrator {
     private final ContextAgent contextAgent;
     private final RcaAgent rcaAgent;
     private final RemediationAgent remediationAgent;
+    private final ProjectKnowledgeRetriever knowledgeRetriever;
 
     public IncidentOrchestrator(
             IncidentRepository repository,
@@ -23,11 +25,23 @@ public class IncidentOrchestrator {
             ContextAgent contextAgent,
             RcaAgent rcaAgent,
             RemediationAgent remediationAgent) {
+        this(repository, triageAgent, contextAgent, rcaAgent, remediationAgent, null);
+    }
+
+    @Autowired
+    public IncidentOrchestrator(
+            IncidentRepository repository,
+            TriageAgent triageAgent,
+            ContextAgent contextAgent,
+            RcaAgent rcaAgent,
+            RemediationAgent remediationAgent,
+            ProjectKnowledgeRetriever knowledgeRetriever) {
         this.repository = repository;
         this.triageAgent = triageAgent;
         this.contextAgent = contextAgent;
         this.rcaAgent = rcaAgent;
         this.remediationAgent = remediationAgent;
+        this.knowledgeRetriever = knowledgeRetriever;
     }
 
     public Incident create(
@@ -69,7 +83,10 @@ public class IncidentOrchestrator {
                 );
 
         var triage = triageAgent.execute(incident, null);
-        var evidence = contextAgent.execute(incident, null);
+        var collectedEvidence = contextAgent.execute(incident, null);
+        var evidence = knowledgeRetriever == null
+                ? collectedEvidence
+                : knowledgeRetriever.enrich(incident, collectedEvidence);
         var rca = rcaAgent.execute(incident, evidence);
 
         var incidentWithAnalysisContext = new Incident(

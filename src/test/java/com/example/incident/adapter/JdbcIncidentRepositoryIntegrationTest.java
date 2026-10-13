@@ -3,6 +3,7 @@ package com.example.incident.adapter;
 import com.example.incident.domain.Incident;
 import com.example.incident.domain.IncidentStatus;
 import com.example.incident.domain.KnowledgeDocument;
+import com.example.incident.domain.KnowledgeDocumentChunk;
 import com.example.incident.domain.Project;
 import com.example.incident.domain.Severity;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -51,11 +52,12 @@ class JdbcIncidentRepositoryIntegrationTest {
                 .migrate();
 
         jdbcTemplate = new JdbcTemplate(dataSource);
+        jdbcTemplate.update("DELETE FROM project_knowledge_chunks");
         jdbcTemplate.update("DELETE FROM project_knowledge_documents");
         jdbcTemplate.update("DELETE FROM incidents");
         repository = new JdbcIncidentRepository(jdbcTemplate, new ObjectMapper());
         projectRepository = new JdbcProjectRepository(jdbcTemplate);
-        knowledgeDocumentRepository = new JdbcKnowledgeDocumentRepository(jdbcTemplate);
+        knowledgeDocumentRepository = new JdbcKnowledgeDocumentRepository(jdbcTemplate, new ObjectMapper());
     }
 
     @Test
@@ -129,6 +131,27 @@ class JdbcIncidentRepositoryIntegrationTest {
 
         assertTrue(knowledgeDocumentRepository.deleteByProjectIdAndId(projectA.id(), documentA.id()));
         assertTrue(knowledgeDocumentRepository.findByProjectId(projectA.id()).isEmpty());
+    }
+
+    @Test
+    void storesAndReadsVectorChunksOnlyWithinTheRequestedProject() {
+        var projectA = projectRepository.save(new Project(UUID.randomUUID(), "Vector Project A", Instant.now()));
+        var projectB = projectRepository.save(new Project(UUID.randomUUID(), "Vector Project B", Instant.now()));
+        var documentA = knowledgeDocument(projectA.id(), "A", "first project data");
+        var documentB = knowledgeDocument(projectB.id(), "B", "second project data");
+        knowledgeDocumentRepository.create(documentA);
+        knowledgeDocumentRepository.create(documentB);
+        var now = Instant.now().truncatedTo(ChronoUnit.MICROS);
+        var chunkA = new KnowledgeDocumentChunk(UUID.randomUUID(), documentA.id(), projectA.id(), 0,
+                "first project data", "bge-m3", List.of(0.1f, 0.2f), now);
+        var chunkB = new KnowledgeDocumentChunk(UUID.randomUUID(), documentB.id(), projectB.id(), 0,
+                "second project data", "bge-m3", List.of(0.3f, 0.4f), now);
+
+        knowledgeDocumentRepository.replaceChunks(documentA.id(), List.of(chunkA));
+        knowledgeDocumentRepository.replaceChunks(documentB.id(), List.of(chunkB));
+
+        assertEquals(List.of(chunkA), knowledgeDocumentRepository.findChunksByProjectId(projectA.id()));
+        assertEquals(List.of(chunkB), knowledgeDocumentRepository.findChunksByProjectId(projectB.id()));
     }
 
     private KnowledgeDocument knowledgeDocument(UUID projectId, String title, String content) {
