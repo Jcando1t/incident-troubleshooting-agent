@@ -2,10 +2,14 @@ package com.example.incident.adapter;
 
 import com.example.incident.port.TextEmbeddingModel;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+import java.net.http.HttpClient;
+import java.time.Duration;
 import java.util.List;
 
 @Component
@@ -17,7 +21,25 @@ public class OllamaEmbeddingModel implements TextEmbeddingModel {
             RestClient.Builder restClientBuilder,
             @Value("${app.rag.embedding.base-url}") String baseUrl,
             @Value("${app.rag.embedding.model}") String model) {
-        this.restClient = restClientBuilder.baseUrl(baseUrl).build();
+        this(restClientBuilder, baseUrl, model, Duration.ofSeconds(3), Duration.ofSeconds(15));
+    }
+
+    @Autowired
+    public OllamaEmbeddingModel(
+            RestClient.Builder restClientBuilder,
+            @Value("${app.rag.embedding.base-url}") String baseUrl,
+            @Value("${app.rag.embedding.model}") String model,
+            @Value("${app.rag.embedding.connect-timeout:3s}") Duration connectTimeout,
+            @Value("${app.rag.embedding.read-timeout:15s}") Duration readTimeout) {
+        var httpClient = HttpClient.newBuilder()
+                .connectTimeout(connectTimeout)
+                .build();
+        var requestFactory = new JdkClientHttpRequestFactory(httpClient);
+        requestFactory.setReadTimeout(readTimeout);
+        this.restClient = restClientBuilder
+                .baseUrl(baseUrl)
+                .requestFactory(requestFactory)
+                .build();
         this.model = model;
     }
 

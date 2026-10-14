@@ -31,9 +31,54 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class IncidentOrchestratorTest {
+
+    @Test
+    void escalatesAndPersistsIncidentWhenTriageDependencyFails() {
+        var repository = mock(IncidentRepository.class);
+        var triageAgent = mock(TriageAgent.class);
+        var contextAgent = mock(ContextAgent.class);
+        var rcaAgent = mock(RcaAgent.class);
+        var remediationAgent = mock(RemediationAgent.class);
+        var id = UUID.randomUUID();
+        var initialIncident = new Incident(
+                id,
+                "Dependency timeout",
+                "payment-service",
+                "local",
+                Severity.P2,
+                "LLM timed out during triage",
+                IncidentStatus.RECEIVED,
+                Instant.now(),
+                null,
+                null,
+                null,
+                null,
+                List.of()
+        );
+
+        when(repository.findById(id)).thenReturn(Optional.of(initialIncident));
+        when(repository.save(any(Incident.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(triageAgent.execute(any(Incident.class), (Void) isNull()))
+                .thenThrow(new IllegalStateException("LLM request timed out"));
+
+        var orchestrator = new IncidentOrchestrator(
+                repository, triageAgent, contextAgent, rcaAgent, remediationAgent);
+
+        var result = orchestrator.analyze(id);
+
+        assertEquals(IncidentStatus.ESCALATED, result.status());
+        assertEquals(Severity.P2, result.severity());
+        assertEquals("analysis.failed", result.audit().getLast().action());
+        assertEquals(
+                "Analysis stopped during triage (IllegalStateException)",
+                result.audit().getLast().detail());
+        verifyNoInteractions(contextAgent, rcaAgent, remediationAgent);
+    }
 
     @Test
     void passesAnalysisContextToRemediationAndPersistsCompleteIncident() {

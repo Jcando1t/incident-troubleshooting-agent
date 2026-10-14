@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -29,12 +30,22 @@ public class PrometheusEvidenceSource implements EvidenceSource {
     public PrometheusEvidenceSource(
             RestClient.Builder builder,
             @Value("${app.observability.prometheus-url}") String baseUrl) {
+        this(builder, baseUrl, Duration.ofSeconds(3), Duration.ofSeconds(5));
+    }
+
+    @Autowired
+    public PrometheusEvidenceSource(
+            RestClient.Builder builder,
+            @Value("${app.observability.prometheus-url}") String baseUrl,
+            @Value("${app.observability.connect-timeout:3s}") Duration connectTimeout,
+            @Value("${app.observability.read-timeout:5s}") Duration readTimeout) {
 
         var httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(3))
+                .connectTimeout(connectTimeout)
                 .build();
 
         var requestFactory = new JdkClientHttpRequestFactory(httpClient);
+        requestFactory.setReadTimeout(readTimeout);
 
         this.baseUrl = baseUrl;
         this.client = builder

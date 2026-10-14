@@ -3,6 +3,8 @@ package com.example.incident.service;
 import com.example.incident.agent.*;
 import com.example.incident.domain.*;
 import com.example.incident.port.IncidentRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -12,6 +14,8 @@ import java.util.UUID;
 
 @Service
 public class IncidentOrchestrator {
+    private static final Logger log = LoggerFactory.getLogger(IncidentOrchestrator.class);
+
     private final IncidentRepository repository;
     private final TriageAgent triageAgent;
     private final ContextAgent contextAgent;
@@ -82,56 +86,56 @@ public class IncidentOrchestrator {
                         "multi-agent workflow"
                 );
 
-        var triage = triageAgent.execute(incident, null);
-        var collectedEvidence = contextAgent.execute(incident, null);
-        var evidence = knowledgeRetriever == null
-                ? collectedEvidence
-                : knowledgeRetriever.enrich(incident, collectedEvidence);
-        var rca = rcaAgent.execute(incident, evidence);
-
-        var incidentWithAnalysisContext = new Incident(
-                incident.id(),
-                incident.projectId(),
-                incident.title(),
-                incident.service(),
-                incident.environment(),
-                triage.severity(),
-                incident.description(),
-                incident.status(),
-                incident.createdAt(),
-                triage,
-                evidence,
-                rca,
-                incident.remediation(),
-                incident.audit()
-        );
+        TriageResult triage = null;
+        EvidenceBundle evidence = null;
+        RcaResult rca = null;
+        RemediationPlan remediation;
+        var stage = "triage";
 
         try {
-            var remediation = remediationAgent.execute(
-                    incidentWithAnalysisContext,
-                    rca
-            );
+            triage = triageAgent.execute(incident, null);
 
-            return repository.save(
-                    incident.withAnalysis(
-                            triage,
-                            evidence,
-                            rca,
-                            remediation
-                    ).addAudit(
-                            "orchestrator",
-                            "analysis.completed",
-                            "awaiting approval"
-                    )
-            );
-        } catch (IllegalStateException ex) {
-            var escalated = new Incident(
+            stage = "context collection";
+            var collectedEvidence = contextAgent.execute(incident, null);
+            evidence = knowledgeRetriever == null
+                    ? collectedEvidence
+                    : knowledgeRetriever.enrich(incident, collectedEvidence);
+
+            stage = "root-cause analysis";
+            rca = rcaAgent.execute(incident, evidence);
+
+            var incidentWithAnalysisContext = new Incident(
                     incident.id(),
                     incident.projectId(),
                     incident.title(),
                     incident.service(),
                     incident.environment(),
                     triage.severity(),
+                    incident.description(),
+                    incident.status(),
+                    incident.createdAt(),
+                    triage,
+                    evidence,
+                    rca,
+                    incident.remediation(),
+                    incident.audit()
+            );
+
+            stage = "remediation planning and safety validation";
+            remediation = remediationAgent.execute(
+                    incidentWithAnalysisContext,
+                    rca
+            );
+        } catch (RuntimeException ex) {
+            log.warn("Incident analysis failed: incidentId={}, stage={}, errorType={}",
+                    id, stage, ex.getClass().getSimpleName());
+            var escalated = new Incident(
+                    incident.id(),
+                    incident.projectId(),
+                    incident.title(),
+                    incident.service(),
+                    incident.environment(),
+                    triage == null ? incident.severity() : triage.severity(),
                     incident.description(),
                     IncidentStatus.ESCALATED,
                     incident.createdAt(),
@@ -143,11 +147,34 @@ public class IncidentOrchestrator {
             ).addAudit(
                     "orchestrator",
                     "analysis.failed",
-                    ex.getMessage()
+                    failureDetail(stage, ex)
             );
 
             return repository.save(escalated);
         }
+
+        return repository.save(
+                incident.withAnalysis(
+                        triage,
+                        evidence,
+                        rca,
+                        remediation
+                ).addAudit(
+                        "orchestrator",
+                        "analysis.completed",
+                        "awaiting approval"
+                )
+        );
+    }
+
+    private String failureDetail(String stage, RuntimeException exception) {
+        if ("remediation planning and safety validation".equals(stage)
+                && exception.getMessage() != null
+                && !exception.getMessage().isBlank()) {
+            return exception.getMessage();
+        }
+        return "Analysis stopped during " + stage
+                + " (" + exception.getClass().getSimpleName() + ")";
     }
 
     public Incident approve(UUID id, boolean approved, String comment) {

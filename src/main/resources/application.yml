@@ -24,14 +24,20 @@ app:
     api-key: ${DEEP_SEEK_API_KEY:}
     base-url: https://api.deepseek.com
     model: deepseek-chat
+    timeout: ${INCIDENT_LLM_TIMEOUT:30s}
+    max-retries: ${INCIDENT_LLM_MAX_RETRIES:1}
   rag:
     embedding:
       base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
       model: ${OLLAMA_EMBEDDING_MODEL:bge-m3}
+      connect-timeout: ${OLLAMA_CONNECT_TIMEOUT:3s}
+      read-timeout: ${OLLAMA_READ_TIMEOUT:15s}
   observability:
       prometheus-url: http://localhost:9090
       loki-url: http://localhost:3100
       demo-enabled: false
+      connect-timeout: ${OBSERVABILITY_CONNECT_TIMEOUT:3s}
+      read-timeout: ${OBSERVABILITY_READ_TIMEOUT:5s}
 logging:
   file:
     name: logs/incident-platform.log

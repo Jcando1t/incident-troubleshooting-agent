@@ -54,6 +54,8 @@ mvn spring-boot:run
 
 `INCIDENT_API_KEY` 是保护业务 API 的密钥。请保存刚生成的值，不要提交到 Git。若从 IntelliJ 启动应用，请在 Run Configuration 的 Environment variables 中设置 `INCIDENT_API_KEY`。
 
+外部服务调用默认带有超时，避免 Prometheus、Loki、Ollama 或 DeepSeek 无响应时一直占用请求线程。可按部署环境通过环境变量调整：`OBSERVABILITY_CONNECT_TIMEOUT`（默认 3 秒）、`OBSERVABILITY_READ_TIMEOUT`（默认 5 秒）、`OLLAMA_CONNECT_TIMEOUT`（默认 3 秒）、`OLLAMA_READ_TIMEOUT`（默认 15 秒）、`INCIDENT_LLM_TIMEOUT`（默认 30 秒）和 `INCIDENT_LLM_MAX_RETRIES`（默认重试 1 次）。例如 PowerShell 中可设置 `$env:INCIDENT_LLM_TIMEOUT = "60s"`。Prometheus/Loki 查询失败和 Ollama 检索失败会记录警告并降级；Triage、RCA 或修复方案阶段失败会把事件保存为 `ESCALATED`，并在审计记录中写入失败阶段。
+
 在另一个 PowerShell 窗口中，把刚才保存的密钥填入 `$apiKey`，后续 API 请求都通过 `X-API-Key` 请求头携带它：
 
 ```powershell
