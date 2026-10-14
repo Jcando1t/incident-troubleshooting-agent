@@ -112,7 +112,9 @@ $projectId = $project.id
 
 ## 管理项目知识资料
 
-每个项目都可以单独添加、查看、修改和删除纯文本知识资料。当前阶段先保存资料原文，还没有做向量化和 RAG 检索；后续会在检索时按项目 ID 隔离资料。
+每个项目都可以单独添加、查看、修改和删除纯文本知识资料。资料原文保存在 MySQL 中；调用 embedding 索引接口后，系统会按文本切片，使用 Ollama 的 `bge-m3` 生成向量，并把向量切片保存到 MySQL。资料修改后旧向量会被清除，需要重新建立索引；资料删除时对应的向量切片也会随之删除。
+
+故障分析时，系统只检索事件 `projectId` 对应项目的已索引资料，不会把其他项目的资料混在一起。也可以使用 `POST /api/projects/{projectId}/knowledge-search` 单独预览检索结果；该接口只返回匹配片段和相似度，不会创建故障事件。
 
 在 Swagger UI 中使用 `POST /api/projects/{projectId}/knowledge-documents` 添加资料，请把 `{projectId}` 换成项目 ID，请求体例如：
 
