@@ -196,6 +196,23 @@ class JdbcIncidentRepositoryIntegrationTest {
     }
 
     @Test
+    void findsRecentIncidentsForOneProjectOnly() {
+        var projectA = projectRepository.save(new Project(UUID.randomUUID(), "Project A", Instant.now()));
+        var projectB = projectRepository.save(new Project(UUID.randomUUID(), "Project B", Instant.now()));
+        var incidentA = incidentForProject(
+                projectA.id(), "project A incident", "2026-10-09T10:00:00Z");
+        var incidentB = incidentForProject(
+                projectB.id(), "project B incident", "2026-10-10T10:00:00Z");
+        repository.save(incidentA);
+        repository.save(incidentB);
+
+        assertEquals(
+                List.of(incidentA),
+                repository.findRecent(projectA.id(), 10, 0, null, null, null, null)
+        );
+    }
+
+    @Test
     void findsIncidentsWithinInclusiveCreationTimeRange() {
         var before = incident("before range", "payment-service", IncidentStatus.RECEIVED,
                 "2026-10-01T23:59:59Z");
@@ -238,6 +255,25 @@ class JdbcIncidentRepositoryIntegrationTest {
                 Severity.P2,
                 "Integration test incident",
                 status,
+                Instant.parse(createdAt),
+                null,
+                null,
+                null,
+                null,
+                List.of()
+        );
+    }
+
+    private Incident incidentForProject(UUID projectId, String title, String createdAt) {
+        return new Incident(
+                UUID.randomUUID(),
+                projectId,
+                title,
+                "payment-service",
+                "test",
+                Severity.P2,
+                "Integration test incident",
+                IncidentStatus.RECEIVED,
                 Instant.parse(createdAt),
                 null,
                 null,

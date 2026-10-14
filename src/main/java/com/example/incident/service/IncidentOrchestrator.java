@@ -218,4 +218,19 @@ public class IncidentOrchestrator {
         return repository.findRecent(
                 limit, offset, status, service, createdFrom, createdTo);
     }
+
+    public List<Incident> findRecent(
+            UUID projectId,
+            int limit,
+            int offset,
+            IncidentStatus status,
+            String service,
+            Instant createdFrom,
+            Instant createdTo) {
+        if (projectId == null) {
+            return findRecent(limit, offset, status, service, createdFrom, createdTo);
+        }
+        return repository.findRecent(
+                projectId, limit, offset, status, service, createdFrom, createdTo);
+    }
 }

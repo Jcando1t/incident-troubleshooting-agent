@@ -12,6 +12,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class InMemoryIncidentRepositoryTest {
+    private static final UUID DEFAULT_PROJECT_ID =
+            UUID.fromString("00000000-0000-0000-0000-000000000001");
 
     @Test
     void returnsNewestIncidentsFirstAndHonorsLimit() {
@@ -71,6 +73,22 @@ class InMemoryIncidentRepositoryTest {
     }
 
     @Test
+    void filtersIncidentsByProject() {
+        var repository = new InMemoryIncidentRepository();
+        var firstProject = UUID.randomUUID();
+        var secondProject = UUID.randomUUID();
+        var firstIncident = incident(firstProject, "first project", "2026-10-03T00:00:00Z");
+        var secondIncident = incident(secondProject, "second project", "2026-10-04T00:00:00Z");
+        repository.save(firstIncident);
+        repository.save(secondIncident);
+
+        assertEquals(
+                List.of(firstIncident),
+                repository.findRecent(firstProject, 10, 0, null, null, null, null)
+        );
+    }
+
+    @Test
     void filtersByInclusiveCreationTimeRange() {
         var repository = new InMemoryIncidentRepository();
         var before = incident("before", "2026-10-01T23:59:59Z");
@@ -98,7 +116,11 @@ class InMemoryIncidentRepositoryTest {
     }
 
     private Incident incident(String title, String createdAt) {
-        return incident(title, createdAt, IncidentStatus.RECEIVED, "incident-platform");
+        return incident(DEFAULT_PROJECT_ID, title, createdAt);
+    }
+
+    private Incident incident(UUID projectId, String title, String createdAt) {
+        return incident(projectId, title, createdAt, IncidentStatus.RECEIVED, "incident-platform");
     }
 
     private Incident incident(
@@ -106,8 +128,18 @@ class InMemoryIncidentRepositoryTest {
             String createdAt,
             IncidentStatus status,
             String service) {
+        return incident(DEFAULT_PROJECT_ID, title, createdAt, status, service);
+    }
+
+    private Incident incident(
+            UUID projectId,
+            String title,
+            String createdAt,
+            IncidentStatus status,
+            String service) {
         return new Incident(
                 UUID.randomUUID(),
+                projectId,
                 title,
                 service,
                 "local",
@@ -122,4 +154,5 @@ class InMemoryIncidentRepositoryTest {
                 List.of()
         );
     }
+
 }

@@ -26,11 +26,24 @@ public class InMemoryIncidentRepository implements IncidentRepository {
             String service,
             Instant createdFrom,
             Instant createdTo) {
+        return findRecent(null, limit, offset, status, service, createdFrom, createdTo);
+    }
+
+    @Override
+    public List<Incident> findRecent(
+            UUID projectId,
+            int limit,
+            int offset,
+            IncidentStatus status,
+            String service,
+            Instant createdFrom,
+            Instant createdTo) {
         if (limit < 1 || offset < 0) {
             throw new IllegalArgumentException("limit must be positive and offset cannot be negative");
         }
 
         return store.values().stream()
+                .filter(incident -> projectId == null || incident.projectId().equals(projectId))
                 .filter(incident -> status == null || incident.status() == status)
                 .filter(incident -> service == null || incident.service().equals(service))
                 .filter(incident -> createdFrom == null

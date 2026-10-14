@@ -144,6 +144,18 @@ public class JdbcIncidentRepository implements IncidentRepository {
             String service,
             Instant createdFrom,
             Instant createdTo) {
+        return findRecent(null, limit, offset, status, service, createdFrom, createdTo);
+    }
+
+    @Override
+    public List<Incident> findRecent(
+            UUID projectId,
+            int limit,
+            int offset,
+            IncidentStatus status,
+            String service,
+            Instant createdFrom,
+            Instant createdTo) {
         if (limit < 1 || offset < 0) {
             throw new IllegalArgumentException("limit must be positive and offset cannot be negative");
         }
@@ -157,6 +169,10 @@ public class JdbcIncidentRepository implements IncidentRepository {
                 """);
         var parameters = new ArrayList<Object>();
 
+        if (projectId != null) {
+            sql.append(" AND project_id = ?");
+            parameters.add(projectId.toString());
+        }
         if (status != null) {
             sql.append(" AND status = ?");
             parameters.add(status.name());

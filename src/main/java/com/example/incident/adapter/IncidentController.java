@@ -58,6 +58,9 @@ public class IncidentController {
             IncidentStatus status,
             @RequestParam(required = false)
             String service,
+            @Parameter(description = "按项目 ID 筛选，避免混合查看不同项目的事件")
+            @RequestParam(required = false)
+            UUID projectId,
             @Parameter(description = "创建时间起点（包含），ISO-8601 格式，例如 2026-10-01T00:00:00Z")
             @RequestParam(required = false)
             Instant createdFrom,
@@ -82,8 +85,12 @@ public class IncidentController {
                     "createdFrom must be earlier than or equal to createdTo"
             );
         }
+        if (projectId == null) {
+            return orchestrator.findRecent(
+                    limit, offset, status, service, createdFrom, createdTo);
+        }
         return orchestrator.findRecent(
-                limit, offset, status, service, createdFrom, createdTo);
+                projectId, limit, offset, status, service, createdFrom, createdTo);
     }
 
     @PostMapping("/{id}/approval")

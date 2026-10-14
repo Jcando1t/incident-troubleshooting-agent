@@ -17,4 +17,15 @@ public interface IncidentRepository {
             String service,
             Instant createdFrom,
             Instant createdTo);
+
+    default List<Incident> findRecent(
+            UUID projectId,
+            int limit,
+            int offset,
+            IncidentStatus status,
+            String service,
+            Instant createdFrom,
+            Instant createdTo) {
+        return findRecent(limit, offset, status, service, createdFrom, createdTo);
+    }
 }

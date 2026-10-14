@@ -155,12 +155,12 @@ $result | ConvertTo-Json -Depth 10
 
 ## 查询和审批
 
-查询事件列表时，可以用 `createdFrom` 和 `createdTo` 按创建时间筛选。时间使用 ISO-8601 格式；两个端点都包含在结果中。比如查询 2026 年 10 月 1 日至 10 月 10 日创建的事件：
+查询事件列表时，可以使用 `projectId` 限定某个项目，也可以用 `createdFrom` 和 `createdTo` 按创建时间筛选。时间使用 ISO-8601 格式；两个时间端点都包含在结果中。还支持 `status`、`service`、`limit` 和 `offset`。比如按项目和时间范围查询：
 
 ```powershell
 Invoke-RestMethod `
     -Method Get `
-    -Uri "http://localhost:8080/api/incidents?createdFrom=2026-10-01T00:00:00Z&createdTo=2026-10-10T23:59:59Z" `
+    -Uri "http://localhost:8080/api/incidents?projectId=$projectId&createdFrom=2026-10-01T00:00:00Z&createdTo=2026-10-10T23:59:59Z" `
     -Headers $headers |
     ConvertTo-Json -Depth 10
 ```

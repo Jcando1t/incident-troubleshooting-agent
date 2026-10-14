@@ -100,6 +100,24 @@ class IncidentControllerTest {
     }
 
     @Test
+    void forwardsProjectFilter() throws Exception {
+        var orchestrator = mock(IncidentOrchestrator.class);
+        var projectId = UUID.randomUUID();
+        when(orchestrator.findRecent(
+                projectId, 20, 0, null, null, null, null))
+                .thenReturn(List.of());
+        MockMvc mvc = secureMvc(orchestrator);
+
+        mvc.perform(get("/api/incidents")
+                        .header("X-API-Key", TEST_API_KEY)
+                        .param("projectId", projectId.toString()))
+                .andExpect(status().isOk());
+
+        verify(orchestrator).findRecent(
+                projectId, 20, 0, null, null, null, null);
+    }
+
+    @Test
     void rejectsCreationTimeRangeWhenStartIsAfterEnd() throws Exception {
         var orchestrator = mock(IncidentOrchestrator.class);
         MockMvc mvc = secureMvc(orchestrator);
