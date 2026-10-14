@@ -11,6 +11,7 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
@@ -85,6 +86,33 @@ class PrometheusEvidenceSourceTest {
             var source = new PrometheusEvidenceSource(
                     RestClient.builder(),
                     "http://localhost:" + server.getAddress().getPort()
+            );
+
+            assertTrue(source.collect(incident()).isEmpty());
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void returnsNoEvidenceWhenPrometheusReadTimesOut() throws IOException {
+        var server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
+        server.createContext("/api/v1/query", exchange -> {
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+            }
+            exchange.close();
+        });
+        server.start();
+
+        try {
+            var source = new PrometheusEvidenceSource(
+                    RestClient.builder(),
+                    "http://localhost:" + server.getAddress().getPort(),
+                    Duration.ofSeconds(1),
+                    Duration.ofMillis(100)
             );
 
             assertTrue(source.collect(incident()).isEmpty());
