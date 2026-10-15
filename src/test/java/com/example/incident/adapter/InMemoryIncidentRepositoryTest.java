@@ -89,6 +89,20 @@ class InMemoryIncidentRepositoryTest {
     }
 
     @Test
+    void findsIncidentOnlyWhenProjectMatches() {
+        var repository = new InMemoryIncidentRepository();
+        var projectId = UUID.randomUUID();
+        var otherProjectId = UUID.randomUUID();
+        var incident = incident(projectId, "scoped incident", "2026-10-03T00:00:00Z");
+        repository.save(incident);
+
+        assertEquals(java.util.Optional.of(incident),
+                repository.findByProjectIdAndId(projectId, incident.id()));
+        assertEquals(java.util.Optional.empty(),
+                repository.findByProjectIdAndId(otherProjectId, incident.id()));
+    }
+
+    @Test
     void filtersByInclusiveCreationTimeRange() {
         var repository = new InMemoryIncidentRepository();
         var before = incident("before", "2026-10-01T23:59:59Z");

@@ -137,6 +137,12 @@ public class JdbcIncidentRepository implements IncidentRepository {
     }
 
     @Override
+    public Optional<Incident> findByProjectIdAndId(UUID projectId, UUID id) {
+        // 事件 ID 是主键，先按主键读取，再在仓储边界校验所属项目。
+        return findById(id).filter(incident -> incident.projectId().equals(projectId));
+    }
+
+    @Override
     public List<Incident> findRecent(
             int limit,
             int offset,

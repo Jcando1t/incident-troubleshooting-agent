@@ -10,6 +10,10 @@ import java.util.UUID;
 public interface IncidentRepository {
     Incident save(Incident incident);
     Optional<Incident> findById(UUID id);
+
+    default Optional<Incident> findByProjectIdAndId(UUID projectId, UUID id) {
+        return findById(id).filter(incident -> incident.projectId().equals(projectId));
+    }
     List<Incident> findRecent(
             int limit,
             int offset,

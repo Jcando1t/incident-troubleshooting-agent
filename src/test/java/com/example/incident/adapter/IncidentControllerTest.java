@@ -189,6 +189,47 @@ class IncidentControllerTest {
     }
 
     @Test
+    void validatesProjectWhenReadingIncidentById() throws Exception {
+        var orchestrator = mock(IncidentOrchestrator.class);
+        var projectService = mock(ProjectService.class);
+        var projectId = UUID.randomUUID();
+        var incidentId = UUID.randomUUID();
+        when(orchestrator.get(projectId, incidentId)).thenThrow(
+                new IncidentNotFoundException("Incident not found: " + incidentId));
+        when(projectService.get(projectId)).thenReturn(
+                new Project(projectId, "Payments", Instant.now()));
+        var mvc = standaloneSetup(new IncidentController(orchestrator, projectService))
+                .addInterceptors(new ApiKeyInterceptor(TEST_API_KEY, new ObjectMapper()))
+                .build();
+
+        mvc.perform(get("/api/incidents/{id}", incidentId)
+                        .header("X-API-Key", TEST_API_KEY)
+                        .param("projectId", projectId.toString()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("INCIDENT_NOT_FOUND"));
+    }
+
+    @Test
+    void returnsProjectNotFoundBeforeReadingIncident() throws Exception {
+        var orchestrator = mock(IncidentOrchestrator.class);
+        var projectService = mock(ProjectService.class);
+        var projectId = UUID.randomUUID();
+        var incidentId = UUID.randomUUID();
+        when(projectService.get(projectId)).thenThrow(new ProjectNotFoundException(projectId));
+        var mvc = standaloneSetup(new IncidentController(orchestrator, projectService))
+                .addInterceptors(new ApiKeyInterceptor(TEST_API_KEY, new ObjectMapper()))
+                .build();
+
+        mvc.perform(get("/api/incidents/{id}", incidentId)
+                        .header("X-API-Key", TEST_API_KEY)
+                        .param("projectId", projectId.toString()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("PROJECT_NOT_FOUND"));
+
+        org.mockito.Mockito.verifyNoInteractions(orchestrator);
+    }
+
+    @Test
     void returnsConflictWhenIncidentCannotBeApprovedInCurrentState() throws Exception {
         var orchestrator = mock(IncidentOrchestrator.class);
         var id = UUID.randomUUID();

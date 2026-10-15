@@ -44,8 +44,17 @@ public class IncidentController {
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "按 ID 查询故障事件")
-    public Incident get(@PathVariable UUID id) { return orchestrator.get(id); }
+    @Operation(summary = "按 ID 查询故障事件", description = "可选 projectId 用于确认事件属于指定项目")
+    public Incident get(
+            @PathVariable UUID id,
+            @Parameter(description = "可选项目 ID；传入后会校验事件归属")
+            @RequestParam(required = false) UUID projectId) {
+        if (projectId == null) {
+            return orchestrator.get(id);
+        }
+        projectService.get(projectId);
+        return orchestrator.get(projectId, id);
+    }
 
     @GetMapping
     @Operation(summary = "查询最近的故障事件", description = "可以按状态、服务名称和创建时间范围筛选，并使用 limit、offset 控制分页。")

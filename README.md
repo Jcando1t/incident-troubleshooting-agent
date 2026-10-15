@@ -177,6 +177,18 @@ Invoke-RestMethod `
     ConvertTo-Json -Depth 10
 ```
 
+如果希望同时确认事件属于某个项目，可以附带 `projectId`：
+
+```powershell
+Invoke-RestMethod `
+    -Method Get `
+    -Uri "http://localhost:8080/api/incidents/$id?projectId=$projectId" `
+    -Headers $headers |
+    ConvertTo-Json -Depth 10
+```
+
+带上 `projectId` 后，项目不存在或事件不属于该项目都会返回 `404`，不会暴露跨项目事件。
+
 只有 `AWAITING_APPROVAL` 状态的事件可以审批：
 
 ```powershell

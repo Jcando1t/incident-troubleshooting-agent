@@ -208,6 +208,13 @@ public class IncidentOrchestrator {
                 ));
     }
 
+    public Incident get(UUID projectId, UUID id) {
+        return repository.findByProjectIdAndId(projectId, id)
+                .orElseThrow(() -> new IncidentNotFoundException(
+                        "Incident not found: " + id
+                ));
+    }
+
     public List<Incident> findRecent(
             int limit,
             int offset,

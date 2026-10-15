@@ -19,6 +19,11 @@ public class InMemoryIncidentRepository implements IncidentRepository {
     @Override public Optional<Incident> findById(UUID id) { return Optional.ofNullable(store.get(id)); }
 
     @Override
+    public Optional<Incident> findByProjectIdAndId(UUID projectId, UUID id) {
+        return findById(id).filter(incident -> incident.projectId().equals(projectId));
+    }
+
+    @Override
     public List<Incident> findRecent(
             int limit,
             int offset,
