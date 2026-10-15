@@ -89,6 +89,8 @@ public class IncidentController {
             return orchestrator.findRecent(
                     limit, offset, status, service, createdFrom, createdTo);
         }
+        // 先确认项目存在，避免“项目 ID 写错”和“项目暂无事件”都返回空数组。
+        projectService.get(projectId);
         return orchestrator.findRecent(
                 projectId, limit, offset, status, service, createdFrom, createdTo);
     }

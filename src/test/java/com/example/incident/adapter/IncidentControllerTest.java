@@ -118,6 +118,26 @@ class IncidentControllerTest {
     }
 
     @Test
+    void returnsNotFoundWhenProjectFilterDoesNotExist() throws Exception {
+        var orchestrator = mock(IncidentOrchestrator.class);
+        var projectService = mock(ProjectService.class);
+        var projectId = UUID.randomUUID();
+        when(projectService.get(projectId))
+                .thenThrow(new ProjectNotFoundException(projectId));
+        var mvc = standaloneSetup(new IncidentController(orchestrator, projectService))
+                .addInterceptors(new ApiKeyInterceptor(TEST_API_KEY, new ObjectMapper()))
+                .build();
+
+        mvc.perform(get("/api/incidents")
+                        .header("X-API-Key", TEST_API_KEY)
+                        .param("projectId", projectId.toString()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("PROJECT_NOT_FOUND"));
+
+        org.mockito.Mockito.verifyNoInteractions(orchestrator);
+    }
+
+    @Test
     void rejectsCreationTimeRangeWhenStartIsAfterEnd() throws Exception {
         var orchestrator = mock(IncidentOrchestrator.class);
         MockMvc mvc = secureMvc(orchestrator);
