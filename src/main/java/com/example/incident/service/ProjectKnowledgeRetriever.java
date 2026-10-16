@@ -61,6 +61,9 @@ public class ProjectKnowledgeRetriever {
                     Instant.now()
             ));
         }
-        return new EvidenceBundle(List.copyOf(enrichedItems), bundle.complete());
+        return new EvidenceBundle(
+                List.copyOf(enrichedItems),
+                bundle.complete(),
+                bundle.investigationTrace());
     }
 }

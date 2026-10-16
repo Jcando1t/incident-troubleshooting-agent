@@ -15,6 +15,8 @@ POST /api/incidents
 
 上下文调查阶段使用一个受限的 `InvestigationAgent`：大模型只能在已注册的只读证据工具中选择下一步，或返回 `STOP`；每个工具最多调用一次，默认最多调查 3 轮。未知工具选择会立即停止，系统不会执行模型生成的命令。整体顺序、超时、状态升级和人工审批仍由 Workflow 控制。
 
+每次调查的选择和结果会保存在事件的 `evidence.investigationTrace` 中，并同步写入审计记录，例如 `investigation.tool.completed`、`investigation.tool.rejected` 和 `investigation.tool.stopped`，因此可以回看 Agent 为什么选择或停止。
+
 如果修复 Agent 返回不安全或无法识别的命令，事件会进入 `ESCALATED`。系统不会自动执行模型生成的命令。
 
 ## 技术组件

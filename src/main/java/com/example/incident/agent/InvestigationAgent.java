@@ -3,6 +3,7 @@ package com.example.incident.agent;
 import com.example.incident.domain.Evidence;
 import com.example.incident.domain.EvidenceBundle;
 import com.example.incident.domain.Incident;
+import com.example.incident.domain.InvestigationTrace;
 import com.example.incident.port.EvidenceSource;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -58,22 +59,51 @@ public class InvestigationAgent implements IncidentAgent<Void, EvidenceBundle> {
     @Override
     public EvidenceBundle execute(Incident incident, Void ignored) {
         var collected = new ArrayList<Evidence>();
+        var trace = new ArrayList<InvestigationTrace>();
         var usedTools = new HashSet<String>();
 
         for (var step = 0; step < maxSteps; step++) {
             var decision = decideNextTool(incident, collected, usedTools);
-            if (decision == null || STOP.equals(decision.tool())) {
+            if (decision == null) {
+                trace.add(new InvestigationTrace(
+                        step + 1, "decision", "invalid", "无法解析模型的工具选择", Instant.now()));
+                break;
+            }
+            if (STOP.equals(decision.tool())) {
+                trace.add(new InvestigationTrace(
+                        step + 1, STOP, "stopped", safeReason(decision.reason()), Instant.now()));
                 break;
             }
             if (!sources.containsKey(decision.tool()) || !usedTools.add(decision.tool())) {
                 log.warn("Investigation Agent stopped on an invalid or repeated tool: {}", decision.tool());
+                trace.add(new InvestigationTrace(
+                        step + 1, safeToolName(decision.tool()), "rejected",
+                        safeReason(decision.reason()), Instant.now()));
                 break;
             }
-            collected.addAll(sources.get(decision.tool()).collect(incident));
+            try {
+                var before = collected.size();
+                collected.addAll(sources.get(decision.tool()).collect(incident));
+                trace.add(new InvestigationTrace(
+                        step + 1,
+                        decision.tool(),
+                        "completed",
+                        "新增证据 " + (collected.size() - before) + " 条",
+                        Instant.now()));
+            } catch (RuntimeException exception) {
+                log.warn("Investigation tool failed: tool={}, errorType={}",
+                        decision.tool(), exception.getClass().getSimpleName());
+                trace.add(new InvestigationTrace(
+                        step + 1,
+                        decision.tool(),
+                        "failed",
+                        exception.getClass().getSimpleName(),
+                        Instant.now()));
+            }
         }
 
         if (collected.isEmpty()) {
-            return new EvidenceBundle(List.of(), false);
+            return new EvidenceBundle(List.of(), false, trace);
         }
 
         var evidenceText = collected.stream()
@@ -91,7 +121,7 @@ public class InvestigationAgent implements IncidentAgent<Void, EvidenceBundle> {
                 chatModel.chat(summaryPrompt),
                 "llm://deepseek/context",
                 Instant.now()));
-        return new EvidenceBundle(List.copyOf(collected), true);
+        return new EvidenceBundle(List.copyOf(collected), true, trace);
     }
 
     private Decision decideNextTool(Incident incident, List<Evidence> collected, HashSet<String> usedTools) {
@@ -134,6 +164,14 @@ public class InvestigationAgent implements IncidentAgent<Void, EvidenceBundle> {
                     : normalized.substring(3, normalized.length() - 3).trim();
         }
         return normalized;
+    }
+
+    private String safeReason(String reason) {
+        return reason == null || reason.isBlank() ? "未提供理由" : reason.trim();
+    }
+
+    private String safeToolName(String tool) {
+        return tool == null || tool.isBlank() ? "unknown" : tool.trim();
     }
 
     private record Decision(String tool, String reason) {}

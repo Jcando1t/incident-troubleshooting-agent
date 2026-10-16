@@ -47,6 +47,9 @@ class InvestigationAgentTest {
         assertEquals("prometheus", result.items().get(0).source());
         assertEquals("loki", result.items().get(1).source());
         assertEquals("context-agent", result.items().get(2).source());
+        assertEquals(3, result.investigationTrace().size());
+        assertEquals("completed", result.investigationTrace().get(0).outcome());
+        assertEquals("STOP", result.investigationTrace().get(2).tool());
         verify(prometheus).collect(any(Incident.class));
         verify(loki).collect(any(Incident.class));
     }
@@ -65,6 +68,7 @@ class InvestigationAgentTest {
 
         assertFalse(result.complete());
         assertTrue(result.items().isEmpty());
+        assertEquals("rejected", result.investigationTrace().getFirst().outcome());
         verify(prometheus, never()).collect(any(Incident.class));
     }
 

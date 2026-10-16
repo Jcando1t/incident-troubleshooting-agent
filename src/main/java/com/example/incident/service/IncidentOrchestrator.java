@@ -150,11 +150,10 @@ public class IncidentOrchestrator {
                     failureDetail(stage, ex)
             );
 
-            return repository.save(escalated);
+            return repository.save(addInvestigationAudits(escalated, evidence));
         }
 
-        return repository.save(
-                incident.withAnalysis(
+        var completed = incident.withAnalysis(
                         triage,
                         evidence,
                         rca,
@@ -163,8 +162,23 @@ public class IncidentOrchestrator {
                         "orchestrator",
                         "analysis.completed",
                         "awaiting approval"
-                )
-        );
+                );
+        return repository.save(addInvestigationAudits(completed, evidence));
+    }
+
+    private Incident addInvestigationAudits(Incident incident, EvidenceBundle evidence) {
+        if (evidence == null || evidence.investigationTrace() == null) {
+            return incident;
+        }
+        var result = incident;
+        for (var trace : evidence.investigationTrace()) {
+            result = result.addAudit(
+                    "investigation-agent",
+                    "investigation.tool." + trace.outcome(),
+                    "step=" + trace.step() + ", tool=" + trace.tool()
+                            + ", reason=" + trace.reason());
+        }
+        return result;
     }
 
     private String failureDetail(String stage, RuntimeException exception) {
