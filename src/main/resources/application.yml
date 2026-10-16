@@ -38,6 +38,8 @@ app:
       demo-enabled: false
       connect-timeout: ${OBSERVABILITY_CONNECT_TIMEOUT:3s}
       read-timeout: ${OBSERVABILITY_READ_TIMEOUT:5s}
+  investigation:
+    max-steps: ${INCIDENT_INVESTIGATION_MAX_STEPS:3}
 logging:
   file:
     name: logs/incident-platform.log
