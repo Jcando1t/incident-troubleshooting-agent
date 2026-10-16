@@ -106,7 +106,15 @@ public class IncidentController {
 
     @PostMapping("/{id}/approval")
     @Operation(summary = "审批或拒绝修复方案", description = "只有处于 AWAITING_APPROVAL 状态的事件可以审批。")
-    public Incident approval(@PathVariable UUID id, @Valid @RequestBody ApprovalRequest request) {
+    public Incident approval(
+            @PathVariable UUID id,
+            @Parameter(description = "可选项目 ID；传入后会校验事件归属")
+            @RequestParam(required = false) UUID projectId,
+            @Valid @RequestBody ApprovalRequest request) {
+        if (projectId != null) {
+            projectService.get(projectId);
+            return orchestrator.approve(projectId, id, request.approved(), request.comment());
+        }
         return orchestrator.approve(id, request.approved(), request.comment());
     }
 

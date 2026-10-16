@@ -179,6 +179,15 @@ public class IncidentOrchestrator {
 
     public Incident approve(UUID id, boolean approved, String comment) {
         var incident = get(id);
+        return approveLoadedIncident(incident, approved, comment);
+    }
+
+    public Incident approve(UUID projectId, UUID id, boolean approved, String comment) {
+        var incident = get(projectId, id);
+        return approveLoadedIncident(incident, approved, comment);
+    }
+
+    private Incident approveLoadedIncident(Incident incident, boolean approved, String comment) {
         if (incident.status() != IncidentStatus.AWAITING_APPROVAL) {
             throw new IncidentStateConflictException(
                     "Only incidents awaiting approval can be approved"

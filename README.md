@@ -201,7 +201,7 @@ $approvalBody = @{
 
 Invoke-RestMethod `
     -Method Post `
-    -Uri "http://localhost:8080/api/incidents/$id/approval" `
+    -Uri "http://localhost:8080/api/incidents/$id/approval?projectId=$projectId" `
     -Headers $headers `
     -ContentType "application/json; charset=utf-8" `
     -Body ([System.Text.Encoding]::UTF8.GetBytes($approvalBody)) |
@@ -209,6 +209,8 @@ Invoke-RestMethod `
 ```
 
 把 `approved` 改为 `$false` 会进入 `REJECTED`，并记录 `remediation.rejected` 审计动作。状态不允许审批时，接口返回 HTTP `409 Conflict`。
+
+审批请求带上 `projectId` 时，系统会先验证项目存在，再验证事件属于该项目；项目不存在或事件不属于项目时返回 `404`。
 
 ## MySQL 查询
 

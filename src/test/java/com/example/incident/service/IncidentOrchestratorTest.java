@@ -366,4 +366,43 @@ class IncidentOrchestratorTest {
         assertEquals("remediation.rejected", result.audit().getLast().action());
         assertEquals("Evidence is insufficient", result.audit().getLast().detail());
     }
+
+    @Test
+    void approvesIncidentOnlyWhenProjectScopeMatches() {
+        var repository = mock(IncidentRepository.class);
+        var projectId = UUID.randomUUID();
+        var incident = new Incident(
+                UUID.randomUUID(),
+                projectId,
+                "Payment service errors",
+                "payment-service",
+                "production",
+                Severity.P1,
+                "5xx error rate reached 18%",
+                IncidentStatus.AWAITING_APPROVAL,
+                Instant.now(),
+                null,
+                null,
+                null,
+                new RemediationPlan(List.of(), false),
+                List.of()
+        );
+        when(repository.findByProjectIdAndId(projectId, incident.id()))
+                .thenReturn(Optional.of(incident));
+        when(repository.save(any(Incident.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        var orchestrator = new IncidentOrchestrator(
+                repository,
+                mock(TriageAgent.class),
+                mock(ContextAgent.class),
+                mock(RcaAgent.class),
+                mock(RemediationAgent.class)
+        );
+
+        var result = orchestrator.approve(projectId, incident.id(), true, "approve");
+
+        assertEquals(IncidentStatus.APPROVED, result.status());
+        verify(repository).findByProjectIdAndId(projectId, incident.id());
+    }
 }
