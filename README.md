@@ -32,16 +32,25 @@ POST /api/incidents
 
 项目使用本机 MySQL，不需要创建 Docker MySQL。数据库名为 `incident_platform`。数据库配置在 `src/main/resources/application.yml`，生产环境应通过 `INCIDENT_DB_USERNAME` 和 `INCIDENT_DB_PASSWORD` 设置账号密码。
 
-启动观测容器：
+在没有旧容器的新环境中，启动观测容器：
 
 ```powershell
-docker start prometheus
-docker start loki
-docker start alloy
+Set-Location "path\to\incident-troubleshooting-agent"
+docker compose -f observability/docker-compose.yml up -d
 docker ps
 ```
 
-配置文件位于 `observability/prometheus/prometheus.yml` 和 `observability/alloy/config.alloy`。
+停止 Compose 创建的观测容器（保留 Prometheus 和 Alloy 数据卷）：
+
+```powershell
+docker compose -f observability/docker-compose.yml down
+```
+
+配置文件位于 `observability/prometheus/prometheus.yml`、`observability/alloy/config.alloy` 和
+`observability/docker-compose.yml`。Compose 不会启动 MySQL；项目继续使用本机 MySQL。
+如果本机已经有手动创建的 `prometheus`、`loki`、`alloy` 容器，它们会占用相同端口。不要同时启动两套；
+继续使用已有容器时可运行 `docker start prometheus loki alloy`。迁移到 Compose 前，先停止旧容器
+（`docker stop prometheus loki alloy`），不会删除旧容器；之后再执行上面的 Compose 命令。
 
 启动 Spring Boot：
 
