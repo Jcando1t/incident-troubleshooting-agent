@@ -2,6 +2,7 @@ package com.example.incident.adapter;
 
 import com.example.incident.domain.Project;
 import com.example.incident.service.ProjectService;
+import com.example.incident.service.ProjectInUseException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -12,10 +13,12 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
@@ -59,6 +62,30 @@ class ProjectControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(project.id().toString()))
                 .andExpect(jsonPath("$[0].name").value("求职 Agent"));
+    }
+
+    @Test
+    void deletesAnEmptyProject() throws Exception {
+        var projectService = mock(ProjectService.class);
+        var projectId = UUID.fromString("52e50924-a446-44f9-84f9-3ee9c4746a18");
+
+        mvc(projectService).perform(delete("/api/projects/" + projectId)
+                        .header("X-API-Key", TEST_API_KEY))
+                .andExpect(status().isNoContent());
+
+        verify(projectService).delete(projectId);
+    }
+
+    @Test
+    void rejectsDeletingAProjectThatHasData() throws Exception {
+        var projectService = mock(ProjectService.class);
+        var projectId = UUID.fromString("52e50924-a446-44f9-84f9-3ee9c4746a18");
+        doThrow(new ProjectInUseException(projectId)).when(projectService).delete(projectId);
+
+        mvc(projectService).perform(delete("/api/projects/" + projectId)
+                        .header("X-API-Key", TEST_API_KEY))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("PROJECT_CANNOT_BE_DELETED"));
     }
 
     private MockMvc mvc(ProjectService projectService) {

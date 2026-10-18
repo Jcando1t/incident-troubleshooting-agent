@@ -55,6 +55,18 @@ public class JdbcProjectRepository implements ProjectRepository {
         );
     }
 
+    @Override
+    public boolean deleteIfEmpty(UUID id) {
+        return jdbcTemplate.update("""
+                DELETE FROM projects
+                WHERE id = ?
+                  AND NOT EXISTS (SELECT 1 FROM incidents WHERE project_id = ?)
+                  AND NOT EXISTS (SELECT 1 FROM project_knowledge_documents WHERE project_id = ?)
+                  AND NOT EXISTS (SELECT 1 FROM project_knowledge_chunks WHERE project_id = ?)
+                """,
+                id.toString(), id.toString(), id.toString(), id.toString()) == 1;
+    }
+
     private Project mapProject(String id, String name, Timestamp createdAt) {
         return new Project(UUID.fromString(id), name, createdAt.toInstant());
     }

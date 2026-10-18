@@ -96,6 +96,7 @@ API 交互文档（页面中接口标题和说明为中文）：
 
 - 浏览器访问 `http://localhost:8080/swagger-ui/index.html` 查看并试用业务接口；如需把 Swagger 自带的按钮也翻译成中文，可以在 Edge 页面上右键并选择“翻译成中文”；
 - 浏览器访问 `http://localhost:8080/` 使用中文控制台：输入 API Key 后可以选择项目、查看/筛选事件、创建事件、查看分析详情并审批修复方案；
+- 在中文控制台中可以删除当前项目，但只有没有事件和知识资料的空项目允许删除；`Legacy Project` 是兼容旧数据的系统项目，不能删除；
 - 原始 OpenAPI 说明位于 `http://localhost:8080/v3/api-docs`；
 - 在 Swagger UI 中点击 **Authorize**，填入 API key 的值（不用加 `Bearer` 前缀），之后再试 `/api/**` 接口。
 

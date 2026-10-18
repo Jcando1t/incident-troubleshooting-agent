@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Testcontainers(disabledWithoutDocker = true)
@@ -105,6 +106,34 @@ class JdbcIncidentRepositoryIntegrationTest {
         assertEquals(project, projectRepository.findById(project.id()).orElseThrow());
         assertEquals(project.id(), repository.findById(incident.id()).orElseThrow().projectId());
         assertTrue(projectRepository.findAll().contains(project));
+    }
+
+    @Test
+    void deletesAnEmptyProject() {
+        var project = projectRepository.save(new Project(UUID.randomUUID(), "Empty project", Instant.now()));
+
+        assertTrue(projectRepository.deleteIfEmpty(project.id()));
+        assertTrue(projectRepository.findById(project.id()).isEmpty());
+    }
+
+    @Test
+    void refusesToDeleteAProjectThatHasIncidents() {
+        var project = projectRepository.save(new Project(UUID.randomUUID(), "Used project", Instant.now()));
+        repository.save(new Incident(
+                UUID.randomUUID(), project.id(), "incident", "service", "test", Severity.P3,
+                "description", IncidentStatus.RECEIVED, Instant.now(), null, null, null, null, List.of()));
+
+        assertFalse(projectRepository.deleteIfEmpty(project.id()));
+        assertTrue(projectRepository.findById(project.id()).isPresent());
+    }
+
+    @Test
+    void refusesToDeleteAProjectThatHasKnowledgeDocuments() {
+        var project = projectRepository.save(new Project(UUID.randomUUID(), "Knowledge project", Instant.now()));
+        knowledgeDocumentRepository.create(knowledgeDocument(project.id(), "Runbook", "Keep this document."));
+
+        assertFalse(projectRepository.deleteIfEmpty(project.id()));
+        assertTrue(projectRepository.findById(project.id()).isPresent());
     }
 
     @Test
