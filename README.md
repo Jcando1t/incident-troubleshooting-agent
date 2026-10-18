@@ -40,7 +40,7 @@ docker compose -f observability/docker-compose.yml up -d
 docker ps
 ```
 
-停止 Compose 创建的观测容器（保留 Prometheus 和 Alloy 数据卷）：
+停止 Compose 创建的观测容器（保留 Prometheus、Loki 和 Alloy 数据卷）：
 
 ```powershell
 docker compose -f observability/docker-compose.yml down
@@ -69,11 +69,18 @@ mvn spring-boot:run
 
 外部服务调用默认带有超时，避免 Prometheus、Loki、Ollama 或 DeepSeek 无响应时一直占用请求线程。可按部署环境通过环境变量调整：`OBSERVABILITY_CONNECT_TIMEOUT`（默认 3 秒）、`OBSERVABILITY_READ_TIMEOUT`（默认 5 秒）、`OLLAMA_CONNECT_TIMEOUT`（默认 3 秒）、`OLLAMA_READ_TIMEOUT`（默认 15 秒）、`INCIDENT_LLM_TIMEOUT`（默认 30 秒）和 `INCIDENT_LLM_MAX_RETRIES`（默认重试 1 次）。例如 PowerShell 中可设置 `$env:INCIDENT_LLM_TIMEOUT = "60s"`。Prometheus/Loki 查询失败和 Ollama 检索失败会记录警告并降级；Triage、RCA 或修复方案阶段失败会把事件保存为 `ESCALATED`，并在审计记录中写入失败阶段。
 
-在另一个 PowerShell 窗口中，把刚才保存的密钥填入 `$apiKey`，后续 API 请求都通过 `X-API-Key` 请求头携带它：
+在另一个 PowerShell 窗口中，安全输入应用运行配置中的 API key。后续 API 请求都通过 `X-API-Key` 请求头携带它；使用 `Read-Host -AsSecureString` 可以避免密钥直接出现在命令文本和命令历史中：
 
 ```powershell
-$apiKey = "把刚才生成的密钥粘贴到这里"
+$secureApiKey = Read-Host "请输入 API Key" -AsSecureString
+$apiKey = [System.Net.NetworkCredential]::new("", $secureApiKey).Password
 $headers = @{ "X-API-Key" = $apiKey }
+```
+
+演示结束后清除当前 PowerShell 会话中的变量：
+
+```powershell
+Remove-Variable apiKey, secureApiKey, headers
 ```
 
 所有 `/api/**` 接口都需要这个请求头。未配置服务器密钥时，业务 API 返回 `503`；请求没有提供正确密钥时，返回 `401`。Actuator 健康检查和 Prometheus 指标接口不受此密钥保护，方便监控工具采集。此 API key 是所有调用方共用的门锁，不区分具体人员；不要通过公网明文 HTTP 暴露服务，正式远程部署还需要 HTTPS 和更细的用户权限。
