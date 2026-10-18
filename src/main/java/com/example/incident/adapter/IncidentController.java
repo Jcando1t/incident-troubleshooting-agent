@@ -118,6 +118,21 @@ public class IncidentController {
         return orchestrator.approve(id, request.approved(), request.comment());
     }
 
+    @PostMapping("/{id}/resolve")
+    @Operation(summary = "标记故障已解决", description = "人工确认修复生效后使用；只有已批准的事件可以标记为已解决。")
+    public Incident resolve(
+            @PathVariable UUID id,
+            @Parameter(description = "可选项目 ID；传入后会校验事件归属")
+            @RequestParam(required = false) UUID projectId,
+            @RequestBody(required = false) ResolutionRequest request) {
+        var comment = request == null ? null : request.comment();
+        if (projectId != null) {
+            projectService.get(projectId);
+            return orchestrator.resolve(projectId, id, comment);
+        }
+        return orchestrator.resolve(id, comment);
+    }
+
     @ExceptionHandler(IncidentStateConflictException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
     public ErrorResponse handleStateConflict(IncidentStateConflictException exception) {
@@ -140,6 +155,7 @@ public class IncidentController {
                                         @NotBlank String environment, Severity severity,
                                         @NotBlank String description) {}
     public record ApprovalRequest(boolean approved, String comment) {}
+    public record ResolutionRequest(String comment) {}
 
     public record ErrorResponse(String code, String message) {}
 }

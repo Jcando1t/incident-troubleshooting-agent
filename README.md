@@ -230,6 +230,8 @@ Invoke-RestMethod `
 
 把 `approved` 改为 `$false` 会进入 `REJECTED`，并记录 `remediation.rejected` 审计动作。状态不允许审批时，接口返回 HTTP `409 Conflict`。
 
+审批通过后，系统不会自动执行模型生成的命令。人工确认修复已经生效后，可以在中文控制台点击“标记已解决”，或调用 `POST /api/incidents/{id}/resolve`，把事件从 `APPROVED` 变为 `RESOLVED`，并记录 `incident.resolved` 审计动作。只有 `APPROVED` 状态允许执行这一步。
+
 审批请求带上 `projectId` 时，系统会先验证项目存在，再验证事件属于该项目；项目不存在或事件不属于项目时返回 `404`。
 
 ## MySQL 查询

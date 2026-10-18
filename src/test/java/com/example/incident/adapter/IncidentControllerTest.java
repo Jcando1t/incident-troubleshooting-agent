@@ -294,6 +294,33 @@ class IncidentControllerTest {
     }
 
     @Test
+    void forwardsProjectScopeWhenMarkingIncidentResolved() throws Exception {
+        var orchestrator = mock(IncidentOrchestrator.class);
+        var projectService = mock(ProjectService.class);
+        var projectId = UUID.randomUUID();
+        var incidentId = UUID.randomUUID();
+        var result = new Incident(
+                incidentId, projectId, "Payment service errors", "payment-service", "test",
+                Severity.P1, "database timeout", IncidentStatus.RESOLVED, Instant.now(),
+                null, null, null, null, List.of());
+        when(projectService.get(projectId)).thenReturn(new Project(projectId, "Payments", Instant.now()));
+        when(orchestrator.resolve(projectId, incidentId, "verified recovery")).thenReturn(result);
+
+        standaloneSetup(new IncidentController(orchestrator, projectService))
+                .addInterceptors(new ApiKeyInterceptor(TEST_API_KEY, new ObjectMapper()))
+                .build()
+                .perform(post("/api/incidents/{id}/resolve", incidentId)
+                        .header("X-API-Key", TEST_API_KEY)
+                        .param("projectId", projectId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"comment\":\"verified recovery\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("RESOLVED"));
+
+        verify(orchestrator).resolve(projectId, incidentId, "verified recovery");
+    }
+
+    @Test
     void rejectsApiRequestWithoutApiKeyBeforeCallingOrchestrator() throws Exception {
         var orchestrator = mock(IncidentOrchestrator.class);
         MockMvc mvc = secureMvc(orchestrator);

@@ -405,4 +405,42 @@ class IncidentOrchestratorTest {
         assertEquals(IncidentStatus.APPROVED, result.status());
         verify(repository).findByProjectIdAndId(projectId, incident.id());
     }
+
+    @Test
+    void marksApprovedIncidentResolvedWithAuditEntry() {
+        var repository = mock(IncidentRepository.class);
+        var incident = new Incident(
+                UUID.randomUUID(), "Payment service errors", "payment-service", "production",
+                Severity.P1, "5xx error rate reached 18%", IncidentStatus.APPROVED, Instant.now(),
+                null, null, null, new RemediationPlan(List.of(), false), List.of());
+        when(repository.findById(incident.id())).thenReturn(Optional.of(incident));
+        when(repository.save(any(Incident.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var orchestrator = new IncidentOrchestrator(
+                repository, mock(TriageAgent.class), mock(ContextAgent.class),
+                mock(RcaAgent.class), mock(RemediationAgent.class));
+
+        var result = orchestrator.resolve(incident.id(), "verified recovery");
+
+        assertEquals(IncidentStatus.RESOLVED, result.status());
+        assertEquals("incident.resolved", result.audit().getLast().action());
+        assertEquals("verified recovery", result.audit().getLast().detail());
+    }
+
+    @Test
+    void refusesToResolveIncidentThatWasNotApproved() {
+        var repository = mock(IncidentRepository.class);
+        var incident = new Incident(
+                UUID.randomUUID(), "Payment service errors", "payment-service", "production",
+                Severity.P1, "5xx error rate reached 18%", IncidentStatus.AWAITING_APPROVAL, Instant.now(),
+                null, null, null, new RemediationPlan(List.of(), false), List.of());
+        when(repository.findById(incident.id())).thenReturn(Optional.of(incident));
+
+        var orchestrator = new IncidentOrchestrator(
+                repository, mock(TriageAgent.class), mock(ContextAgent.class),
+                mock(RcaAgent.class), mock(RemediationAgent.class));
+
+        assertThrows(IncidentStateConflictException.class,
+                () -> orchestrator.resolve(incident.id(), "not yet"));
+    }
 }

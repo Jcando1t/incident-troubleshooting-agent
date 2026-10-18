@@ -224,6 +224,27 @@ public class IncidentOrchestrator {
         );
     }
 
+    public Incident resolve(UUID id, String comment) {
+        return resolveLoadedIncident(get(id), comment);
+    }
+
+    public Incident resolve(UUID projectId, UUID id, String comment) {
+        return resolveLoadedIncident(get(projectId, id), comment);
+    }
+
+    private Incident resolveLoadedIncident(Incident incident, String comment) {
+        if (incident.status() != IncidentStatus.APPROVED) {
+            throw new IncidentStateConflictException(
+                    "Only approved incidents can be marked as resolved"
+            );
+        }
+
+        return repository.save(
+                incident.withStatus(IncidentStatus.RESOLVED)
+                        .addAudit("operator", "incident.resolved", comment)
+        );
+    }
+
     public Incident get(UUID id) {
         return repository.findById(id)
                 .orElseThrow(() -> new IncidentNotFoundException(
