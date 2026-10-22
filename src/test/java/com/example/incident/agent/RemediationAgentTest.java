@@ -5,6 +5,7 @@ import com.example.incident.domain.IncidentStatus;
 import com.example.incident.domain.RcaResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.model.chat.ChatModel;
+import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -13,8 +14,10 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class RemediationAgentTest {
@@ -71,9 +74,16 @@ class RemediationAgentTest {
         var agent = new RemediationAgent(chatModel, new ObjectMapper());
 
         var plan = agent.execute(incident(), rca());
+        var promptCaptor = ArgumentCaptor.forClass(String.class);
+        verify(chatModel).chat(promptCaptor.capture());
 
         assertEquals(2, plan.steps().size());
         assertEquals(true, plan.requiresApproval());
+        assertTrue(promptCaptor.getValue().contains(
+                "command 和 rollbackCommand 的值必须且只能是一个完整占位符"));
+        assertTrue(promptCaptor.getValue().contains(
+                "\"command\": \"{{PLACEHOLDER:VERIFY_DATABASE_MIGRATION_STATE}}\""));
+        assertTrue(promptCaptor.getValue().contains("严禁输出任何实际 shell、SQL、kubectl"));
     }
 
     @Test

@@ -43,7 +43,7 @@ public class RemediationAgent implements IncidentAgent<RcaResult, RemediationPla
 
         var prompt = """
                 你是生产系统故障修复专家。请根据事件、观测证据和根因分析生成可执行、可回滚的修复步骤。
-                只能使用输入中的事实，不要编造不存在的资源、主机、版本或命令；命令只能使用形如 {{PLACEHOLDER:NAME}} 的占位符，或项目白名单中的 runbook 标识。
+                安全规则（必须遵守）：command 和 rollbackCommand 的值必须且只能是一个完整占位符（例如 {{PLACEHOLDER:VERIFY_DATABASE_MIGRATION_STATE}}），或输入中明确给出的白名单 runbook 标识。本项目没有配置 runbook 白名单，因此始终返回占位符。严禁输出任何实际 shell、SQL、kubectl 等可执行命令，也不能在占位符后附加参数或说明文字。占位符只是供人工识别的动作标记，系统不会执行它。信息不足时，只提供检查步骤或转人工，不要猜测命令。
                 每个步骤必须同时包含 description、command、rollbackCommand、risk 四个字段；risk 只能是 LOW、MEDIUM、HIGH。
                 涉及删除数据、修改生产配置、切换流量、回滚发布、重启服务或其他可能造成中断的操作，risk 必须为 HIGH。
                 至少先给出一个可验证的低风险步骤，再给出必要的修复步骤；所有步骤都必须提供对应 rollbackCommand。
@@ -64,10 +64,16 @@ public class RemediationAgent implements IncidentAgent<RcaResult, RemediationPla
                 {
                   "steps": [
                     {
-                      "description": "修复或验证动作",
-                      "command": "{{PLACEHOLDER:SAFE_ACTION}} 或白名单 runbook 标识",
-                      "rollbackCommand": "{{PLACEHOLDER:ROLLBACK_ACTION}} 或白名单 runbook 标识",
-                      "risk": "LOW|MEDIUM|HIGH"
+                      "description": "检查数据库迁移状态",
+                      "command": "{{PLACEHOLDER:VERIFY_DATABASE_MIGRATION_STATE}}",
+                      "rollbackCommand": "{{PLACEHOLDER:NOOP_ROLLBACK}}",
+                      "risk": "LOW"
+                    },
+                    {
+                      "description": "仅在人工确认后应用数据库迁移",
+                      "command": "{{PLACEHOLDER:APPLY_DATABASE_MIGRATIONS}}",
+                      "rollbackCommand": "{{PLACEHOLDER:MANUAL_ROLLBACK_REVIEW}}",
+                      "risk": "HIGH"
                     }
                   ]
                 }
