@@ -1,0 +1,12 @@
+适用系统：求职 Agent（FastAPI + Vue 3 本地求职工作台）。资料来源：2026-10-20 技术审计，标注〔代码确认〕〔配置确认〕〔测试确认〕〔文档确认〕〔待定〕。
+- 故障现象：草稿预计超一页被拒保存（409）；STAR 检查提示"建议补充"；事实核对列出需人工核对的新数字/名词
+- 影响范围：审核与保存环节
+- 可能原因：内容过长（估算按 56 行×48 字符宽，代码确认）；经历要点缺行动词/结果词；草稿出现原资料没有的数字或技术名词（factuality_check 标记）
+- 检查步骤：① 看快照 quality_check.layout.estimated_lines/pages ② quality_check.star.experiences 的 missing 列表 ③ factuality.items 的 claims
+- 相关日志关键词：预计超过一页、建议补充、需人工核对
+- 相关接口、类或配置：resume_quality.py、factuality_check.py、main.py approve（layout>1 页时 409 拒绝保存）、edit_resume_run（编辑后自动重新检查）
+- 解决方法：在前端编辑草稿删减内容（PUT draft 会重新质量检查）→ 重新保存；补充事实依据或删除无依据表述
+- 解决后验证方法：approve 成功并生成新版本；导出 PDF 为一页
+- 是否可以自动修复：否（设计上必须人工删减确认）
+- 修复风险：低
+- 不能确定时需要补充信息：无

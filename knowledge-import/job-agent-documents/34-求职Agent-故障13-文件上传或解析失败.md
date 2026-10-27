@@ -1,0 +1,12 @@
+适用系统：求职 Agent（FastAPI + Vue 3 本地求职工作台）。资料来源：2026-10-20 技术审计，标注〔代码确认〕〔配置确认〕〔测试确认〕〔文档确认〕〔待定〕。
+- 故障现象：上传接口返回 422/413/415 或 OCR 返回 503/422
+- 影响范围：简历原稿与图片导入
+- 可能原因（各状态码均为代码确认）：422=base64 无效/格式不支持/文件损坏/无文字/OCR 图片超 25M 像素；413=超过 10MB；415=图片 content_type 与魔数不匹配；503=rapidocr_onnxruntime 未安装（ImportError 专门提示）
+- 检查步骤：① 核对文件类型（TXT/MD/PDF/DOCX；PNG/JPG/WebP/GIF 图片按魔数校验）② 检查文件大小 ③ OCR 失败先确认依赖已安装
+- 相关日志关键词：DocumentParseError、OcrImageError、图片大小需在 10 MB 以内、本地 OCR 组件尚未安装
+- 相关接口、类或配置：/api/resume-sources/upload、/api/resume-images、/api/resume-images/recognize；document_parser.py、ocr_service.py
+- 解决方法：换受支持格式/压缩图片/安装依赖后重启
+- 解决后验证方法：原稿列表出现新记录；OCR 文字可校对
+- 是否可以自动修复：否
+- 修复风险：低
+- 不能确定时需要补充的信息：文件类型、大小、扩展名与真实格式是否一致

@@ -1,0 +1,12 @@
+适用系统：求职 Agent（FastAPI + Vue 3 本地求职工作台）。资料来源：2026-10-20 技术审计，标注〔代码确认〕〔配置确认〕〔测试确认〕〔文档确认〕〔待定〕。
+- 故障现象：任务快照中简历切片 match_type 为 fallback，或知识条目命中数为 0
+- 影响范围：AI 改进的证据质量
+- 可能原因：查询词（岗位名+公司+JD+指令）分词后无有效词条；知识库为空；JD 用词与资料用词完全不重叠（词面匹配局限）。**设计行为**：查询无有效词时返回知识库前 8 条；简历切片无命中时提供最多 3 条明确标注 fallback 的片段供人工核对〔代码确认：knowledge_retriever.py〕
+- 检查步骤：① 查看快照 resume_chunks[].matched_terms 与 match_type ② 确认知识库非空 ③ 对照 JD 与资料用词
+- 相关日志关键词：fallback、general_context、matched_terms 为空
+- 相关接口、类或配置：knowledge_retriever.py（_terms 分词、停用词表）、main.py create_resume_run
+- 解决方法：在知识条目中补充与 JD 相同术语的经历描述；或人工核对 fallback 片段
+- 解决后验证方法：新任务命中 keyword 类型切片且 matched_terms 非空
+- 是否可以自动修复：否
+- 修复风险：低
+- 不能确定时需要补充的信息：JD 与资料的用词差异样本

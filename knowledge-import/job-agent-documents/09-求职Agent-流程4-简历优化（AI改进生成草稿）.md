@@ -1,0 +1,12 @@
+适用系统：求职 Agent（FastAPI + Vue 3 本地求职工作台）。资料来源：2026-10-20 技术审计，标注〔代码确认〕〔配置确认〕〔测试确认〕〔文档确认〕〔待定〕。
+- 流程名称：简历改进任务（LangGraph 主流程）
+- 输入：source_resume_id、可选 job_id/target_id/job_title/company/jd_text/instruction，且必须 allow_external_model=true
+- 处理步骤：① JD 分析与要求匹配（本地）② 关键词检索资料+简历切片（本地，各取最多 8 条）③ 建立 input_snapshot、AgentRun(running) ④ LangGraph：生成草稿（DeepSeek，JSON 模式）→ 质量检查 → 路由 ⑤ 落库 status=draft
+- 使用的模块或接口：jd_analyzer、knowledge_retriever、resume_graph、resume_agent、llm_client、database.py
+- 大模型参与位置：generate_draft 节点，唯一一次调用；System Prompt 强制"只能引用本次提供的编号，无证据进 missing_information"
+- RAG 参与位置：retrieve_knowledge（结构化条目，标题权重×3）与 retrieve_resume_chunks（段落切片）
+- 输出：草稿正文 + 招呼语 + evidence（仅合法编号）+ missing_info + quality_check
+- 数据保存位置：agent_runs 表（result_content、evidence_json、missing_info_json、input_snapshot 含检索快照）
+- 可能失败的地方：未同意（400）、原稿/岗位/方向不存在（404）、方向不一致（409）、Key 未配置（503）、模型网络失败（502，自动重试 3 次后）、返回非 JSON/正文为空（502）
+- 验证方法：GET /api/resume-runs/{id} 查看 status 与 error_message；刷新后待审核草稿恢复〔测试确认：test_resume_agent.py、test_resume_graph.py、test_resume_workflow_e2e.py〕
+- 当前限制：同步阻塞调用（默认 30 秒超时内）；生成质量依赖 DeepSeek；关键词检索可能漏召回

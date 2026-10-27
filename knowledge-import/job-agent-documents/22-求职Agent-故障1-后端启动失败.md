@@ -1,0 +1,12 @@
+适用系统：求职 Agent（FastAPI + Vue 3 本地求职工作台）。资料来源：2026-10-20 技术审计，标注〔代码确认〕〔配置确认〕〔测试确认〕〔文档确认〕〔待定〕。
+- 故障现象：`python -m uvicorn main:app --reload` 启动即报错退出，或无法访问 127.0.0.1:8000
+- 影响范围：全部功能
+- 可能原因：依赖未安装（ModuleNotFoundError）；8000 端口被占用；lifespan 中 Alembic `upgrade head` 失败（main.py 启动即迁移，迁移失败会阻断启动）；DATABASE_PATH 父目录不可写；Python 版本不符
+- 检查步骤：① 看控制台 traceback ② `python -m pip install -r requirements.txt` ③ 访问 /health ④ 单独运行 `python -m alembic upgrade head` 复现迁移问题 ⑤ 检查 .env 中 DATABASE_PATH/FILE_STORAGE_DIR 路径
+- 相关日志关键词：ModuleNotFoundError、Address already in use、FAILED (Upgrade)、unable to open database file、Can't locate revision
+- 相关接口、类或配置：main.py lifespan、alembic.ini、app/config.py、app/sqlalchemy_db.py
+- 解决方法：装依赖；更换端口或结束占用进程；修复迁移（见故障 5）；修正路径配置
+- 解决后验证方法：/health 返回 {"status":"ok"}；首页可打开
+- 是否可以自动修复：否
+- 修复风险：低
+- 不能确定时需要补充的信息：完整启动 traceback

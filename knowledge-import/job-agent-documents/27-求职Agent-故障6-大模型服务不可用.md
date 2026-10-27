@@ -1,0 +1,12 @@
+适用系统：求职 Agent（FastAPI + Vue 3 本地求职工作台）。资料来源：2026-10-20 技术审计，标注〔代码确认〕〔配置确认〕〔测试确认〕〔文档确认〕〔待定〕。
+- 故障现象：POST /api/resume-runs 返回 502，detail 含"模型服务暂时无法连接，已自动重试 3 次"；run 状态 failed
+- 影响范围：仅 AI 简历改进（其余功能不受影响）
+- 可能原因：断网；DeepSeek 服务故障；系统代理失效（httpx 默认 trust_env=False，直连失败且 LLM_USE_ENV_PROXY=0）；DEEPSEEK_BASE_URL 配错
+- 检查步骤：① 查看该 run 的 error_message（含 __cause__）② 浏览器/curl 验证 api.deepseek.com 连通性 ③ 若本机需要代理，设置 LLM_USE_ENV_PROXY=1 并确认系统代理可用（.env 注释：本地常见失效代理 127.0.0.1:9）
+- 相关日志关键词：APIConnectionError、APITimeoutError、模型服务暂时无法连接
+- 相关接口、类或配置：app/services/llm_client.py（重试 3 次、间隔 1.5s×(n+1)）、LLM_TIMEOUT_SECONDS、LLM_USE_ENV_PROXY
+- 解决方法：恢复网络/代理后重新创建改进任务（失败 run 保留供对照，可删除）
+- 解决后验证方法：新建 run 成功返回 draft
+- 是否可以自动修复：是（网络恢复后重试即可，代码已内置重试）
+- 修复风险：低
+- 不能确定时需要补充的信息：run.error_message 中的底层原因

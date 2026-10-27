@@ -1,0 +1,12 @@
+适用系统：求职 Agent（FastAPI + Vue 3 本地求职工作台）。资料来源：2026-10-20 技术审计，标注〔代码确认〕〔配置确认〕〔测试确认〕〔文档确认〕〔待定〕。
+- 流程名称：审核确认与版本保存
+- 输入：POST /api/resume-runs/{id}/approve（title）
+- 处理步骤：读取快照 layout（缺失则重新估算）→ 预计页数>1 拒绝（409）→ save_approved_agent_run 单事务：AgentRun 置 approved、创建 Resume（version=最大版本+1）、按 target 无 job 时置 is_current=true 并取消该方向旧 current
+- 使用的模块或接口：database.py save_approved_agent_run
+- 大模型参与位置：无
+- RAG 参与位置：无
+- 输出：新简历版本（含 greeting、job_snapshot、source_item_ids、source_resume_id、target_id）
+- 数据保存位置：resumes 表；原稿与旧版本不改动
+- 可能失败的地方：超一页（409）、重复确认（409）、关联方向已被删（自动降级为不关联）
+- 验证方法：GET /api/resumes 版本号递增；下载 DOCX/PDF/MD；旧版本仍可查看〔测试确认：test_database.py〕
+- 当前限制：版本不可回滚为草稿；删除版本为物理删除（无软删除）

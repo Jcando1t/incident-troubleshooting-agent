@@ -1,0 +1,12 @@
+适用系统：求职 Agent（FastAPI + Vue 3 本地求职工作台）。资料来源：2026-10-20 技术审计，标注〔代码确认〕〔配置确认〕〔测试确认〕〔文档确认〕〔待定〕。
+- 故障现象：502"模型返回的内容不是有效 JSON"
+- 影响范围：AI 改进任务
+- 可能原因：模型输出被截断；输出带 Markdown 围栏（代码已兼容剥离 ```json 围栏）；JSON 顶层非对象；response_format 未生效（模型/base_url 不支持）
+- 检查步骤：① 重试 ② 确认 DEEPSEEK_MODEL=deepseek-chat（支持 JSON mode）与官方 base_url
+- 相关日志关键词：JSONDecodeError、模型返回的内容不是有效 JSON、顶层必须是对象
+- 相关接口、类或配置：llm_client.py _parse_json、resume_agent.py（evidence 编号合法性二次校验）
+- 解决方法：重试；保持官方模型名
+- 解决后验证方法：草稿、evidence、missing_info 结构完整
+- 是否可以自动修复：是（偶发）
+- 修复风险：低
+- 不能确定时需要补充的信息：连续失败时的原始返回样本

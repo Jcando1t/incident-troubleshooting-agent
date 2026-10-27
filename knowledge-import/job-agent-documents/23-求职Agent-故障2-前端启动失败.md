@@ -1,0 +1,12 @@
+适用系统：求职 Agent（FastAPI + Vue 3 本地求职工作台）。资料来源：2026-10-20 技术审计，标注〔代码确认〕〔配置确认〕〔测试确认〕〔文档确认〕〔待定〕。
+- 故障现象：`npm run dev` 报错，或 5173 端口无法访问
+- 影响范围：前端开发模式（不影响后端与已构建页面）
+- 可能原因：node_modules 未安装；Node 版本过旧（Vite 6 要求 Node 18+/20+）；5173 端口占用；TypeScript 报错（typecheck 失败不阻塞 dev 但阻塞发布习惯）
+- 检查步骤：① `npm install` ② `npm run typecheck` ③ 换端口（vite.config.ts server.port）
+- 相关日志关键词：ESOCKET、Port 5173 is already in use、Cannot find module
+- 相关接口、类或配置：frontend/package.json、frontend/vite.config.ts（dev 代理 /api → http://127.0.0.1:8000）
+- 解决方法：安装依赖、换端口；注意即使不启动 dev server，只要执行过 `npm run build`，FastAPI 会直接服务 frontend/dist
+- 解决后验证方法：5173 打开页面且接口经代理可达后端
+- 是否可以自动修复：否
+- 修复风险：低
+- 不能确定时需要补充的信息：node/npm 版本

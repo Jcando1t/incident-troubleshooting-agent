@@ -1,0 +1,12 @@
+适用系统：求职 Agent（FastAPI + Vue 3 本地求职工作台）。资料来源：2026-10-20 技术审计，标注〔代码确认〕〔配置确认〕〔测试确认〕〔文档确认〕〔待定〕。
+- 故障现象：启动时 Alembic 报错（FAILED: Upgrade ...），应用无法启动
+- 影响范围：全部功能（启动被阻断）
+- 可能原因：数据库当前结构与迁移脚本预期不符（手工改过表）；alembic_version 指向不存在的修订；data 目录权限
+- 检查步骤：① 单独运行 `python -m alembic upgrade head` 看具体 SQL 错误 ② `python -m alembic current` 与代码中最新 revision（20261020_0007_target_resumes）比对 ③ 备份数据库文件后再处理
+- 相关日志关键词：FAILED、KeyError、Duplicate column、no such column
+- 相关接口、类或配置：main.py lifespan（command.upgrade）、migrations/
+- 解决方法：备份 → 修正差异（手工 SQL 或重建）→ stamp 对齐基线 → 重启
+- 解决后验证方法：应用启动无迁移错误；各表字段与 app/models.py 一致
+- 是否可以自动修复：否
+- 修复风险：高（直接操作有数据的库）
+- 不能确定时需要补充的信息：具体报错 SQL 与库备份状态

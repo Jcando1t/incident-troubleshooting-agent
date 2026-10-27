@@ -1,0 +1,12 @@
+适用系统：求职 Agent（FastAPI + Vue 3 本地求职工作台）。资料来源：2026-10-20 技术审计，标注〔代码确认〕〔配置确认〕〔测试确认〕〔文档确认〕〔待定〕。
+- 故障现象：短时间双击后出现两条相同改进任务/岗位重复提示 409
+- 影响范围：任务列表整洁性、岗位库
+- 可能原因：创建改进任务接口无幂等键，重复点击会创建多个 AgentRun；SQLite 单写者，高并发下可能 database is locked
+- 检查步骤：① 查看 /api/resume-runs 是否有重复任务 ② 岗位保存是否触发 409（代码确认：相同 original_url 或相同岗位信息会被拒绝重复保存）③ approve 重复提交会 409"任务不存在或已经确认，不能重复保存"（save_approved_agent_run 要求 status=draft）
+- 相关日志关键词：已经确认，不能重复保存、相同原始链接、database is locked
+- 相关接口、类或配置：main.py create_resume_run/add_job、database.py save_approved_agent_run
+- 解决方法：删除多余任务；个人单机使用下并发风险本身很低
+- 解决后验证方法：任务/岗位列表无重复
+- 是否可以自动修复：否（重复 run 需人工清理）
+- 修复风险：低
+- 不能确定时需要补充的信息：无

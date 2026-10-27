@@ -1,0 +1,12 @@
+适用系统：求职 Agent（FastAPI + Vue 3 本地求职工作台）。资料来源：2026-10-20 技术审计，标注〔代码确认〕〔配置确认〕〔测试确认〕〔文档确认〕〔待定〕。
+- 流程名称：草稿编辑与重新检查
+- 输入：PUT /api/resume-runs/{id}/draft（新 result_content、greeting；仅 status=draft 可编辑，否则 409）
+- 处理步骤：取 run 关联原稿与快照中的知识条目 → analyze_resume_quality 重新计算（STAR、diff、事实核对、一页估算）→ 更新草稿
+- 使用的模块或接口：main.py edit_resume_run、resume_quality.py
+- 大模型参与位置：无（重新生成需新建 run，再次调用模型）
+- RAG 参与位置：无（复用本次快照中的检索结果与编号）
+- 输出：更新后的草稿 + 新质量检查结果
+- 数据保存位置：agent_runs（result_content、input_snapshot.quality_check）
+- 可能失败的地方：非 draft 状态编辑（409）、原稿已删除（沿用旧质量检查）
+- 验证方法：响应中 quality_check 更新；前端显示新行数估算
+- 当前限制：编辑不重新检索、不重新调模型

@@ -1,0 +1,12 @@
+适用系统：求职 Agent（FastAPI + Vue 3 本地求职工作台）。资料来源：2026-10-20 技术审计，标注〔代码确认〕〔配置确认〕〔测试确认〕〔文档确认〕〔待定〕。
+- 故障现象：改进任务 30 秒（默认）后失败，error_message 含超时；前端长时间等待
+- 影响范围：AI 改进任务
+- 可能原因：LLM_TIMEOUT_SECONDS（默认 30）小于 DeepSeek 实际生成时间；网络慢
+- 检查步骤：① .env 中 LLM_TIMEOUT_SECONDS 是否为数字且 >0（非法值会让 get_settings 抛 ValueError——配置确认）② 观察多次任务耗时
+- 相关日志关键词：APITimeoutError、timed out
+- 相关接口、类或配置：app/config.py（必须为正数）、llm_client.py
+- 解决方法：调大 LLM_TIMEOUT_SECONDS（如 60~120）后重启
+- 解决后验证方法：长任务能完整返回
+- 是否可以自动修复：否
+- 修复风险：低（超时内重试 3 次是代码行为，无重复扣费风险可确认——同一请求重试，语义上为一次任务）
+- 不能确定时需要补充的信息：DeepSeek 侧实际响应时长

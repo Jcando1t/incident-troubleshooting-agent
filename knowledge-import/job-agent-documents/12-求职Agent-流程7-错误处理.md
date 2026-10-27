@@ -1,0 +1,12 @@
+适用系统：求职 Agent（FastAPI + Vue 3 本地求职工作台）。资料来源：2026-10-20 技术审计，标注〔代码确认〕〔配置确认〕〔测试确认〕〔文档确认〕〔待定〕。
+- 流程名称：全局与 LLM 错误处理
+- 输入：任意请求异常
+- 处理步骤：Pydantic 422；业务 404/409/413/415 按语义返回中文 detail；LLM 配置错→run failed + HTTP 503；LLM 调用/格式错→run failed + HTTP 502；Chrome 错→503/409/422；文件保存后建记录失败→回滚删除已写文件（_save_private_file_and_record）
+- 使用的模块或接口：main.py、llm_client.py、chrome_automation.py
+- 大模型参与位置：错误信息本身不经过模型
+- RAG 参与位置：无
+- 输出：HTTP 状态码 + 中文错误信息；agent_runs.error_message 可持久保留失败原因
+- 数据保存位置：agent_runs（失败任务保留 status=failed 与 error_message，刷新可见）
+- 可能失败的地方：未捕获异常会以 500 返回（无全局异常处理器中间件——当前项目未发现自定义 exception handler）
+- 验证方法：构造失败请求观察状态码；查看 run 列表〔测试确认：test_llm_client.py〕
+- 当前限制：无结构化错误码；无统一日志（uvicorn 控制台输出为主）

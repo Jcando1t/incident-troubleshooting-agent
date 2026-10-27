@@ -1,0 +1,12 @@
+适用系统：求职 Agent（FastAPI + Vue 3 本地求职工作台）。资料来源：2026-10-20 技术审计，标注〔代码确认〕〔配置确认〕〔测试确认〕〔文档确认〕〔待定〕。
+- 故障现象：未配置时返回 503"尚未配置 DEEPSEEK_API_KEY"；配置了无效 Key 时返回 502"模型调用失败"（401 被包装）
+- 影响范围：仅 AI 简历改进
+- 可能原因：.env 未创建/未填 Key；Key 拼写错误或已失效；使用了 DEEP_SEEK_API_KEY 环境变量名但值无效
+- 检查步骤：① 确认项目根目录 .env 存在且包含 `DEEPSEEK_API_KEY=<YOUR_API_KEY>`（也兼容 DEEP_SEEK_API_KEY）② 修改后**重启应用**（配置在 LLMClient 构造时读取）③ 确认 .env 未被 .gitignore 忽略导致误用模板值
+- 相关日志关键词：尚未配置 DEEPSEEK_API_KEY、AuthenticationError、401
+- 相关接口、类或配置：app/config.py、app/services/llm_client.py（LLMConfigurationError）
+- 解决方法：填写有效 Key 为 `<YOUR_API_KEY>` 形式的真实值并重启
+- 解决后验证方法：创建改进任务成功；不再出现 503/401
+- 是否可以自动修复：否
+- 修复风险：低
+- 不能确定时需要补充的信息：Key 是否在 DeepSeek 控制台有效、是否有余额

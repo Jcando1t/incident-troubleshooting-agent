@@ -1,0 +1,12 @@
+适用系统：求职 Agent（FastAPI + Vue 3 本地求职工作台）。资料来源：2026-10-20 技术审计，标注〔代码确认〕〔配置确认〕〔测试确认〕〔文档确认〕〔待定〕。
+- 流程名称：个人知识条目录入
+- 输入：分类（个人信息/教育经历/工作经历/项目经验/技能/成果）、标题、单位、时间段、内容、来源说明〔代码确认：schemas.py KnowledgeInput〕
+- 处理步骤：前端表单 → POST/PUT /api/knowledge → create/update_knowledge_item → SQLite
+- 使用的模块或接口：main.py 路由、app/database.py
+- 大模型参与位置：无
+- RAG 参与位置：条目作为后续检索语料（检索时才使用）
+- 输出：知识条目 JSON
+- 数据保存位置：knowledge_items 表
+- 可能失败的地方：必填字段缺失（422）、数据库写入失败
+- 验证方法：GET /api/knowledge 可见；重启后仍在〔测试确认：test_database.py〕
+- 当前限制：无去重校验；无批量导入

@@ -1,0 +1,12 @@
+适用系统：求职 Agent（FastAPI + Vue 3 本地求职工作台）。资料来源：2026-10-20 技术审计，标注〔代码确认〕〔配置确认〕〔测试确认〕〔文档确认〕〔待定〕。
+- 故障现象：接口报 no such table: job_targets / agent_runs 等
+- 影响范围：对应表的所有功能
+- 可能原因：数据库文件是新建空库但未跑迁移；使用了旧版数据库未登记迁移基线
+- 检查步骤：① `python -m alembic current` 查看版本 ② `python -m alembic history` ③ 若库为空：`python -m alembic upgrade head`
+- 相关日志关键词：no such table、Can't locate revision
+- 相关接口、类或配置：alembic.ini、migrations/versions/
+- 解决方法：空库直接 upgrade head；**已存在数据但未登记的旧库**：先停应用、备份，确认表结构一致后 `python -m alembic stamp head`（README 明确警告：不要对未登记的既有库直接 upgrade）
+- 解决后验证方法：应用正常启动（启动时自动 upgrade head 不再报错）
+- 是否可以自动修复：需要人工确认
+- 修复风险：中（对有数据的库误操作 upgrade 可能冲突）
+- 不能确定时需要补充的信息：数据库文件来源与是否有备份

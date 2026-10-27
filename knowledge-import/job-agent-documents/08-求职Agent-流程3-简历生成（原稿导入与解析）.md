@@ -1,0 +1,12 @@
+适用系统：求职 Agent（FastAPI + Vue 3 本地求职工作台）。资料来源：2026-10-20 技术审计，标注〔代码确认〕〔配置确认〕〔测试确认〕〔文档确认〕〔待定〕。
+- 流程名称：简历原稿导入
+- 输入：粘贴文本（.txt/.md）或上传 TXT/MD/PDF/DOCX（base64，≤10MB）或 PNG/JPG 图片
+- 处理步骤：文本→直接保存；文件→extract_resume_text 解析；图片→本地 RapidOCR 识别→用户校对→确认后保存
+- 使用的模块或接口：document_parser.py、ocr_service.py、storage.py（UUID 文件名落盘）
+- 大模型参与位置：无
+- RAG 参与位置：无（原稿作为后续切片检索的语料）
+- 输出：resume_sources 记录（解析文本 + 原始文件）
+- 数据保存位置：resume_sources 表 + FILE_STORAGE_DIR 文件
+- 可能失败的地方：格式不支持/文件损坏/无文字（422 DocumentParseError）、超 10MB（413）、图片魔数不匹配（415）、OCR 组件未装（503）、图片超 25M 像素（422）
+- 验证方法：GET /api/resume-sources；图片 OCR 文字需人工校对后确认〔测试确认：test_document_parser.py〕
+- 当前限制：不保留 PDF/DOCX 原版式；解析文本截断 30,000 字符；扫描版 PDF 不做 OCR

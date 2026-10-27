@@ -1,0 +1,12 @@
+适用系统：求职 Agent（FastAPI + Vue 3 本地求职工作台）。资料来源：2026-10-20 技术审计，标注〔代码确认〕〔配置确认〕〔测试确认〕〔文档确认〕〔待定〕。
+- 故障现象：任意接口 500，日志含 sqlalchemy OperationalError（unable to open database file / database is locked）
+- 影响范围：所有数据读写
+- 可能原因：DATABASE_PATH 指向不可写/不存在且无法创建的目录；数据库文件被其他进程（DB 浏览工具、另一个应用实例）长期占用锁（SQLite 单写者）
+- 检查步骤：① 确认 data/ 目录存在且可写（create_database_engine 会自动 mkdir）② 关闭其他打开该库的工具/重复实例 ③ 检查 .env DATABASE_PATH 是否指向错误路径
+- 相关日志关键词：OperationalError、unable to open database file、database is locked
+- 相关接口、类或配置：app/sqlalchemy_db.py、app/config.py（DATABASE_PATH）
+- 解决方法：修正路径或释放文件占用后重试（应用每次操作新建连接，锁释放即恢复）
+- 解决后验证方法：GET /api/targets 正常返回
+- 是否可以自动修复：是（锁释放后自愈）
+- 修复风险：低
+- 不能确定时需要补充的信息：是否有第二个进程在写库

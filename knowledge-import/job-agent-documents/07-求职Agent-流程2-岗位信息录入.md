@@ -1,0 +1,12 @@
+适用系统：求职 Agent（FastAPI + Vue 3 本地求职工作台）。资料来源：2026-10-20 技术审计，标注〔代码确认〕〔配置确认〕〔测试确认〕〔文档确认〕〔待定〕。
+- 流程名称：岗位录入（手动/粘贴解析/Chrome 同步）
+- 输入：岗位标题、公司、城市、来源、原始链接、JD 描述、关联求职方向；或粘贴的 BOSS 页面文字；或 Chrome 同步结果
+- 处理步骤：手动→POST /api/jobs；粘贴→POST /api/jobs/boss/preview 规则解析后确认导入；Chrome→connect/open→sync_boss_page 读取当前页 DOM→预览→逐条确认 POST /api/jobs
+- 使用的模块或接口：boss_job_parser.py、chrome_automation.py、database.py
+- 大模型参与位置：无（解析全部为本地规则）
+- RAG 参与位置：无（岗位作为后续 JD 流程输入）
+- 输出：岗位记录（含状态、备注、下一步行动）
+- 数据保存位置：jobs 表
+- 可能失败的地方：Chrome 未安装/调试端口未就绪（503）、BOSS 页面结构变化解析失败、未登录被识别（页面含登录标记）、重复链接/重复信息（409）
+- 验证方法：GET /api/jobs；重复保存返回 409〔测试确认：test_job_api.py、test_boss_job_parser.py、test_chrome_automation.py〕
+- 当前限制：仅支持 zhipin.com 域名；同步只读取到完整 JD 的岗位；不自动投递

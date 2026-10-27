@@ -1,0 +1,12 @@
+适用系统：求职 Agent（FastAPI + Vue 3 本地求职工作台）。资料来源：2026-10-20 技术审计，标注〔代码确认〕〔配置确认〕〔测试确认〕〔文档确认〕〔待定〕。
+- 流程名称：JD 拆解与逐条证据匹配
+- 输入：JD 文本（粘贴或来自岗位记录）
+- 处理步骤：analyze_jd 按"岗位职责/任职要求/优先条件"标题与提示词分类、提取关键词（英文词+常见中文领域词，≤30 个）→ match_jd_requirements 对每条要求在原始简历与知识库中做词重叠匹配，取前 3 条证据或标"未找到依据"
+- 使用的模块或接口：jd_analyzer.py（在 main.py 与 analyze_jd 图节点中复用）
+- 大模型参与位置：无（明确设计为可解释规则，不声称语义理解）
+- RAG 参与位置：使用 knowledge_retriever._terms 分词逻辑
+- 输出：responsibilities / hard_requirements / preferred_qualifications / keywords + requirement_matches（含 status 与 evidence）
+- 数据保存位置：agent_runs.input_snapshot（jd_analysis、requirement_matches）
+- 可能失败的地方：JD 无显式标题时归类靠提示词猜测（默认归硬性要求）；无个人资料时全部"未找到依据"但仍可走无 JD/无知识库流程
+- 验证方法：任务快照中逐条可见分类与命中词〔测试确认：test_jd_analyzer.py〕
+- 当前限制：规则式分类非语义理解；匹配是审核辅助，不自动判断胜任

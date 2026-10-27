@@ -30,7 +30,7 @@ POST /api/incidents
 
 ## 启动
 
-项目使用本机 MySQL，不需要创建 Docker MySQL。数据库名为 `incident_platform`。数据库配置在 `src/main/resources/application.yml`，生产环境应通过 `INCIDENT_DB_USERNAME` 和 `INCIDENT_DB_PASSWORD` 设置账号密码。
+项目使用本机 MySQL，不需要创建 Docker MySQL。数据库名为 `incident_platform`。数据库配置在 `src/main/resources/application.yml`，启动前应通过 `INCIDENT_DB_USERNAME` 和 `INCIDENT_DB_PASSWORD` 设置账号密码；仓库不提供默认数据库密码。
 
 在没有旧容器的新环境中，启动观测容器：
 
@@ -150,6 +150,16 @@ $projectId = $project.id
 ```
 
 对应项目的资料可以通过 `GET /api/projects/{projectId}/knowledge-documents` 查看；单份资料支持 `GET`、`PUT` 和 `DELETE`。资料只会出现在 URL 指定项目的列表中。
+
+## 批量导入知识资料（Java）
+
+需要一次导入多份资料时，把 Markdown 文件放进 `knowledge-import/job-agent-documents/`（文件名就是资料标题），然后带 `knowledge-import` profile 启动应用：
+
+```powershell
+mvn spring-boot:run -Dspring-boot.run.profiles=knowledge-import
+```
+
+启动时 `KnowledgeDocumentImportRunner` 会登记项目（默认 `求职 Agent`）、按文件名顺序导入目录下所有 `.md` 文件、逐份建立向量索引，并把结果写入控制台和 `logs/incident-platform.log`，例如"新建 41 份，跳过 0 份，失败 0 份"。导入按资料标题去重，重复执行不会产生重复资料。项目名和目录可在 `application.yml` 的 `app.knowledge.import` 中修改。建立向量索引需要 Ollama 的 `bge-m3`；Ollama 不可用时会记录警告，资料仍会保存，之后可单独调用索引接口补建。
 
 ## 创建事件
 
